@@ -6,14 +6,14 @@ Criado por **Henrique Ruher**.
 
 ## Abrir e instalar no celular
 
-**Link do app:** https://henrique-ruher.github.io/mestre-do-domino/
+**Link do app:** https://henriqueruher.github.io/mestre-do-domino/
 
 - **Android (Chrome):** abra o link e toque em *Instalar app* (ou menu ⋮ → *Adicionar à tela inicial*).
 - **iPhone (Safari):** abra o link, toque em *Compartilhar* → *Adicionar à Tela de Início*.
 
 Depois de instalado, o app abre em tela cheia com o ícone da Pedra Mestra e funciona sem internet.
 
-**Baixar os arquivos:** [pedra-mestra.zip](https://github.com/henrique-ruher/mestre-do-domino/archive/refs/heads/main.zip)
+**Baixar os arquivos:** [pedra-mestra.zip](https://github.com/HenriqueRuher/mestre-do-domino/archive/refs/heads/main.zip)
 
 Para rodar no computador, descompacte e sirva a pasta por HTTP (o navegador bloqueia módulos abertos direto do arquivo):
 
