@@ -1,6 +1,8 @@
-# Mestre do Dominó
+# Pedra Mestra
 
-App para celular que ensina dominó clássico em nível avançado. O professor simula partidas e explica cada jogada: por que aquela pedra, o que ela bloqueia, o que ela revela e quais eram as alternativas.
+Dominó clássico numa mesa 3D de bar, para celular. Jogue solo, treine com nota ou assista o professor explicar cada jogada em balões curtos.
+
+Criado por **Henrique Ruher**.
 
 ## Abrir e instalar no celular
 
@@ -9,25 +11,40 @@ App para celular que ensina dominó clássico em nível avançado. O professor s
 - **Android (Chrome):** abra o link e toque em *Instalar app* (ou menu ⋮ → *Adicionar à tela inicial*).
 - **iPhone (Safari):** abra o link, toque em *Compartilhar* → *Adicionar à Tela de Início*.
 
-Depois de instalado, o app abre em tela cheia e funciona sem internet.
+Depois de instalado, o app abre em tela cheia com o ícone da Pedra Mestra e funciona sem internet.
 
-**Baixar os arquivos:** [mestre-do-domino.zip](https://github.com/henrique-ruher/mestre-do-domino/archive/refs/heads/main.zip). Para jogar no computador, descompacte e abra o `index.html`.
+**Baixar os arquivos:** [pedra-mestra.zip](https://github.com/henrique-ruher/mestre-do-domino/archive/refs/heads/main.zip)
+
+Para rodar no computador, descompacte e sirva a pasta por HTTP (o navegador bloqueia módulos abertos direto do arquivo):
+
+```
+python -m http.server 8000
+```
+
+e abra http://localhost:8000.
 
 ## Modos
 
-- **Mano a mano (1×1):** 7 peças cada, 14 no dorme. Sem jogada, compra até encaixar.
-- **Duplas (2×2):** Sul e Norte contra Leste e Oeste. Todas as peças distribuídas, sem compra. Parceiros não conversam: só a jogada comunica.
+| Modo | O que acontece |
+|---|---|
+| **Jogar solo** | Você contra o computador. O botão *Dica* mostra a melhor jogada. |
+| **Treino** | Você joga e o professor dá nota de 0 a 10 a cada lance, com o motivo. |
+| **Assistir** | O professor joga por todos e cada jogador "fala" a jogada num balão. Toque em *Por quê?* para a explicação completa. |
 
-Em cada modo você escolhe:
+Cada modo pode ser jogado em:
 
-- **Assistir:** o professor joga por todos e explica cada lance.
-- **Treinar:** você joga com o Sul e recebe uma nota de 0 a 10 por jogada, comparada com a melhor opção.
+- **Mano a mano (1×1):** 7 pedras cada, 14 no dorme. Sem jogada, compra até encaixar.
+- **Duplas (2×2):** você (Sul) e Norte contra Leste e Oeste. Sem compra e sem conversa: só a jogada comunica.
 
-## Regras usadas (dominó clássico)
+## A mesa
 
-- 28 peças (0|0 a 6|6). Cada número aparece em 7 peças.
-- Primeira rodada: abre quem tem a carroça de 6 (no 1×1, a maior carroça na mão; sem carroça, a peça mais pesada). Depois, sai quem venceu a rodada anterior.
-- Batida: quem fica sem peças marca a soma das mãos do lado adversário.
+Vista da sua cadeira: sua mão em pé na sua frente, as pedras dos adversários na borda da mesa e os jogadores desfocados ao fundo, num bar com spot de luz sobre a mesa, balcão com garrafas, letreiros neon, copo de cerveja, cinzeiro com cigarro aceso e um bloco com o placar da partida.
+
+## Regras (dominó clássico)
+
+- 28 pedras (0|0 a 6|6). Cada número aparece em 7 pedras.
+- Primeira rodada: abre quem tem a carroça de 6 (no 1×1, a maior carroça na mão; sem carroça, a pedra mais pesada). Depois, sai quem venceu a rodada anterior.
+- Batida: quem fica sem pedras marca a soma das mãos do lado adversário.
 - Jogo trancado: vence o lado com menos pontos na mão e marca os pontos do lado perdedor. Empate: ninguém marca.
 - Partida até 100 pontos.
 
@@ -35,14 +52,18 @@ Em cada modo você escolhe:
 
 Cada jogada é avaliada só com o que aquele jogador poderia saber (a própria mão, a mesa e quem passou ou comprou), pesando:
 
-1. **Bloqueio e contagem:** probabilidade de o próximo adversário não ter as novas pontas, calculada pelas peças que ainda não apareceram.
+1. **Bloqueio e contagem:** probabilidade de o próximo adversário não ter as novas pontas.
 2. **Leitura:** quem passou ou comprou não tem aqueles números.
-3. **Controle:** ficar com peças que encaixam nas pontas que você deixou.
-4. **Carroças:** jogar cedo, porque só entram de um jeito.
-5. **Peso:** descartar peças pesadas.
+3. **Controle:** ficar com pedras que encaixam nas pontas.
+4. **Carroças:** jogar cedo.
+5. **Peso:** descartar pedras pesadas.
 6. **Parceria:** não travar o parceiro, devolver os números que ele abre e fechar os que o rival abre.
 7. **Tranca:** trancar só quando seu lado tem menos pontos.
 
-## Tecnologia
+## Arquivos
 
-Um único `index.html` em JavaScript puro, sem dependências, e um PWA (manifesto + service worker) para instalar e jogar offline.
+- `index.html` — página, estilos, menu e HUD
+- `engine.js` — regras e o professor (sem dependências; roda também em Node)
+- `app.js` — mesa 3D, balões e folhas
+- `vendor/` — Three.js r160 (incluído para funcionar offline)
+- `sw.js`, `manifest.webmanifest`, `icon*` — instalação como app
