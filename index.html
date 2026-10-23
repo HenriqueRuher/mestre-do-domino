@@ -80,6 +80,11 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px;border-ra
 .mi .chev{opacity:.5}
 .menu-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .mini-btn{padding:12px;border-radius:14px;background:var(--glass);border:1px solid var(--glass-line);font-weight:600;color:var(--ink-dim)}
+.gear{position:absolute;top:calc(env(safe-area-inset-top,0px) + 14px);right:max(16px,env(safe-area-inset-right,0px));z-index:2}
+.set-row{display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--ink)}
+.set-row b{font-family:var(--f-mono);color:var(--amber);font-variant-numeric:tabular-nums}
+.set-range{width:100%;accent-color:var(--amber);height:28px}
+.set-btn{background:var(--wood-3);border-radius:12px;padding:10px 14px;font-weight:600;color:var(--ink)}
 .install-btn{display:flex;align-items:center;gap:12px;text-align:left;padding:12px 16px;border-radius:16px;border:1.5px dashed rgba(234,165,63,.55);background:rgba(234,165,63,.08);color:var(--amber)}
 .install-btn b{display:block;color:var(--ink);font-weight:700;font-size:14.5px}
 .install-btn small{display:block;color:var(--ink-dim);font-size:12px;margin-top:1px}
@@ -210,6 +215,7 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px;border-ra
 </div>
 
 <div id="menu">
+  <button class="iconbtn gear" id="btnSettings" aria-label="Configurações"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
   <div class="menu-inner">
     <div class="menu-spacer"></div>
     <div class="brand">

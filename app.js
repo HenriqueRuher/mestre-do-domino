@@ -1368,7 +1368,7 @@ function showResult() {
 }
 
 /* ================== Instalar e atualizar ================== */
-const APP_VERSION = '2.2.0'; // manter igual a VERSION em sw.js
+const APP_VERSION = '2.3.0'; // manter igual a VERSION em sw.js
 const isStandalone = () => matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone === true;
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 let installEvt = null;
@@ -1416,6 +1416,45 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   });
   try { if (sessionStorage.getItem('pm-updated')) { sessionStorage.removeItem('pm-updated'); setTimeout(() => toast(`Pedra Mestra atualizada para a versão ${APP_VERSION}.`), 900); } } catch (e) {}
 }
+
+/* ================== Música e configurações ================== */
+const MUSIC = ['musicas/01.mp3', 'musicas/02.mp3'];
+const audio = new Audio(); audio.preload = 'none';
+let track = 0, musicStarted = false, volume = 40;
+try { const v = localStorage.getItem('pm-volume'); if (v !== null && !isNaN(+v)) volume = +v; } catch (e) {}
+function fadeTo(target, ms = 1200) {
+  const from = audio.volume, t0 = performance.now();
+  const stepF = () => { const k = Math.min(1, (performance.now() - t0) / ms); audio.volume = from + (target - from) * k; if (k < 1) requestAnimationFrame(stepF); };
+  requestAnimationFrame(stepF);
+}
+function playTrack(i) {
+  track = (i + MUSIC.length) % MUSIC.length;
+  audio.src = MUSIC[track]; audio.volume = 0;
+  if (volume > 0) audio.play().then(() => fadeTo(volume / 100)).catch(() => {});
+}
+function setVolume(v) {
+  volume = v; audio.volume = v / 100;
+  try { localStorage.setItem('pm-volume', String(v)); } catch (e) {}
+  if (v === 0) audio.pause();
+  else if (musicStarted && audio.paused && !document.hidden) { if (!audio.src) playTrack(track); else audio.play().catch(() => {}); }
+}
+audio.addEventListener('ended', () => playTrack(track + 1));
+const startMusic = () => { if (musicStarted) return; musicStarted = true; playTrack(0); };
+for (const ev of ['pointerup', 'touchend', 'keydown', 'click']) window.addEventListener(ev, startMusic, { capture: true, passive: true });
+document.addEventListener('visibilitychange', () => {
+  if (!musicStarted) return;
+  if (document.hidden) audio.pause(); else if (volume > 0) audio.play().catch(() => {});
+});
+function showSettings() {
+  sheet(`<h3>Configurações</h3>
+    <label class="set-row" for="volMusic"><span>Volume da música</span><b id="volVal">${volume}%</b></label>
+    <input class="set-range" type="range" id="volMusic" min="0" max="100" step="5" value="${volume}">
+    <div class="set-row"><span id="trackName">Música ${track + 1} de ${MUSIC.length}</span><button class="set-btn" id="btnTrack">Próxima música</button></div>
+    <button class="primary" data-close>Pronto</button>`);
+  $('#volMusic').addEventListener('input', e => { setVolume(+e.target.value); $('#volVal').textContent = volume + '%'; });
+  $('#btnTrack').addEventListener('click', () => { musicStarted = true; playTrack(track + 1); $('#trackName').textContent = `Música ${track + 1} de ${MUSIC.length}`; });
+}
+$('#btnSettings').addEventListener('click', showSettings);
 
 /* ================== Início ================== */
 init3D();

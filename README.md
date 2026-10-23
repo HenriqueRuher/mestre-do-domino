@@ -23,6 +23,10 @@ Depois de instalado, o app abre em tela cheia, funciona sem internet e **se atua
 
 **Baixar os arquivos:** [pedra-mestra.zip](https://github.com/HenriqueRuher/mestre-do-domino/archive/refs/heads/main.zip). Para rodar no computador, sirva a pasta por HTTP (`python -m http.server 8000`) e abra http://localhost:8000.
 
+## Música
+
+Duas músicas de fundo tocam em sequência a partir do primeiro toque na tela. A engrenagem no canto do menu abre as **Configurações**, com o volume (padrão 40%, guardado no aparelho) e o botão para trocar de música.
+
 ## Modos
 
 | Modo | O que acontece |
@@ -74,4 +78,5 @@ Cada jogada é avaliada só com o que aquele jogador poderia saber (a própria m
 - `engine.js` — regras e o professor (sem dependências; roda também em Node)
 - `app.js` — mesa 3D, balões e folhas
 - `vendor/` — Three.js r160 (incluído para funcionar offline)
+- `musicas/` — trilha de fundo
 - `sw.js`, `manifest.webmanifest`, `icon*` — instalação como app e atualização automática (ao publicar, aumente `VERSION` em `sw.js` e `APP_VERSION` em `app.js`)
