@@ -30,12 +30,12 @@ let G = null;
 
 const nameOf = p => (G.n === 4 && p === 0 && G.play !== 'watch') ? 'Você' : SEATS[G.mode][p];
 const team = p => G.n === 4 ? p % 2 : p;
-const isHuman = p => p === 0 && G.play !== 'watch';
+const isHuman = p => p === 0 && G.play === 'solo';
 
-// play: 'watch' (professor joga tudo), 'train' (você joga e recebe nota), 'solo' (você joga, sem professor)
+// play: 'watch' (professor joga tudo, ritmo corrido), 'train' (professor joga tudo e explica com pausas), 'solo' (você joga)
 function newMatch(mode, play) {
   G = { mode, n: mode === '1x1' ? 2 : 4, play, reveal: play === 'watch', score: [0, 0], handNo: 0, starter: null, first: true,
-        mid: Math.random().toString(36).slice(2), stats: { asked: 0, best: 0, sumGrade: 0 } };
+        mid: Math.random().toString(36).slice(2) };
   newHand();
 }
 
@@ -281,17 +281,13 @@ function step() {
   G.lastEv = { type: 'play', p, chosen, evals, forced, only: moves.length === 1 };
 }
 
-// Jogada do humano. Em treino, compara com a melhor e dá nota.
+// Jogada do humano (modo solo).
 function userMove(m) {
   const { evals, forced } = G.await;
   const chosen = evals.find(e => e.m.t === m.t && e.m.side === m.side);
-  const rank = evals.indexOf(chosen);
-  const g = grade(evals[0], chosen);
-  const graded = G.play === 'train' && evals.length > 1;
-  if (graded) { G.stats.asked++; G.stats.sumGrade += g; if (rank === 0 || g >= 9.95) G.stats.best++; }
   G.await = null; G.sel = null; G.hint = null;
   play(0, chosen.m);
-  G.lastEv = { type: 'play', p: 0, chosen, evals, user: true, graded, rank, g, forced, only: evals.length === 1 };
+  G.lastEv = { type: 'play', p: 0, chosen, evals, user: true, forced, only: evals.length === 1 };
 }
 
 const TIPS = [

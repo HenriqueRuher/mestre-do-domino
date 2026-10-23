@@ -28,8 +28,8 @@ e abra http://localhost:8000.
 | Modo | O que acontece |
 |---|---|
 | **Jogar solo** | Você contra o computador. O botão *Dica* mostra a melhor jogada. |
-| **Treino** | Você joga e o professor dá nota de 0 a 10 a cada lance, com o motivo. |
-| **Assistir** | O professor joga por todos e cada jogador "fala" a jogada num balão. Toque em *Por quê?* para a explicação completa. |
+| **Treino** | O professor joga a sua mão e explica cada lance com pausa para leitura (dois motivos e por que não a outra opção). |
+| **Assistir** | Partida corrida: cada jogador "fala" a jogada num balão curto. Toque em *Por quê?* para a explicação completa. |
 
 Cada modo pode ser jogado em:
 

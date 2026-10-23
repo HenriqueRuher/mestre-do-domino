@@ -51,8 +51,8 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px;border-ra
 /* ---------- Cena ---------- */
 #stage{position:fixed;inset:0;overflow:hidden;background:radial-gradient(ellipse at 50% 30%,#3a2619,var(--night) 70%)}
 #stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
-#bg3d{filter:blur(3.5px) saturate(.95) brightness(.9);transform:scale(1.04)}
-.vignette{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 55%,transparent 55%,rgba(8,5,3,.55))}
+#bg3d{filter:blur(3.5px) saturate(1) brightness(.92);transform:scale(1.04)}
+.vignette{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 62%,transparent 42%,rgba(5,3,2,.78))}
 .no3d-msg{position:absolute;inset:auto 20px 45% 20px;text-align:center;color:var(--ink-dim);line-height:1.5}
 
 /* ---------- Marca ---------- */
@@ -136,6 +136,14 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px;border-ra
 .p-why{color:#3d342b}
 .p-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--bone-2);color:#5c4a33}
+.p-list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px;color:#3d342b}
+.p-list li{padding-left:14px;position:relative}
+.p-list li::before{content:"";position:absolute;left:0;top:.5em;width:7px;height:7px;border-radius:50%;background:#3d8a5e}
+.p-list li.neg::before{background:#c2533d}
+.p-alt{font-size:13px;color:#5e5245;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.p-timer{height:3px;border-radius:2px;background:var(--bone-2);overflow:hidden;margin-top:2px}
+.p-timer i{display:block;height:100%;background:var(--amber);transform-origin:left;animation:timer linear forwards}
+@keyframes timer{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 .why-btn{margin-left:auto;font-weight:700;font-size:13px;color:#8a5a12;padding:4px 2px;text-decoration:underline;text-underline-offset:3px}
 .verdict{padding:6px 10px;border-radius:10px;font-weight:700}
 .verdict.good{background:var(--good-bg);color:var(--good)}
@@ -210,12 +218,12 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px;border-ra
       </button>
       <button class="mi" data-play="train" id="miTrain">
         <span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-5 9 5-9 5z"/><path d="M7 11.5V16c0 1.5 2.2 3 5 3s5-1.5 5-3v-4.5"/></svg></span>
-        <span><span class="mi-t">Treino</span><span class="mi-d">Você joga e o professor dá nota</span></span>
+        <span><span class="mi-t">Treino</span><span class="mi-d">O professor joga sua mão e explica, com pausas</span></span>
         <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 5l7 7-7 7"/></svg>
       </button>
       <button class="mi" data-play="watch" id="miWatch">
         <span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></span>
-        <span><span class="mi-t">Assistir</span><span class="mi-d">O professor joga e explica cada lance</span></span>
+        <span><span class="mi-t">Assistir</span><span class="mi-d">Partida corrida com dicas rápidas</span></span>
         <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 5l7 7-7 7"/></svg>
       </button>
     </nav>
