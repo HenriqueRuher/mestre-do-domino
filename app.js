@@ -69,7 +69,7 @@ function init3D() {
   V.fg.shadowMap.enabled = true; V.fg.shadowMap.type = THREE.PCFSoftShadowMap;
   V.cam = new THREE.PerspectiveCamera(34, 1, .5, 200);
   V.fgScene = new THREE.Scene(); V.bgScene = new THREE.Scene(); V.midScene = new THREE.Scene();
-  buildRoom(); buildTable(); buildProps(); buildTiles(); buildMidLights(); buildPlayers();
+  buildRoom(); buildTable(); buildProps(); buildTiles(); buildMidLights(); buildPlayers(); buildLife();
   V.ray = new THREE.Raycaster();
   new ResizeObserver(resize3D).observe(stage);
   $('#fg3d').addEventListener('pointerdown', onPick);
@@ -158,7 +158,7 @@ function buildRoom() {
       g.shadowBlur = 8; g.fillStyle = '#fff4f0'; g.fillText(text, W / 2, H / 2 + 6);
     });
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, transparent: true, toneMapped: false, depthWrite: false }));
-    m.position.set(x, y, BZ - .7); s.add(m);
+    m.position.set(x, y, BZ - .7); s.add(m); (V.neons = V.neons || []).push(m);
   };
   neon('BAR', '#ff4f86', 7, 2.6, -9.5, 12.4);
   neon('DOMINÓ', '#ffb347', 10, 3.7, 9, 12.5);
@@ -179,7 +179,7 @@ function buildRoom() {
     p.position.set(pt.x, .2, -14.2); p.rotation.y = Math.PI + (Math.random() - .5) * .5; p.scale.setScalar(1.05); s.add(p);
   }
   // Outras mesas com velas e cadeiras vazias
-  for (const [x, z] of [[-17, -7], [17, -8]]) {
+  for (const [x, z] of [[-22, -2.5], [19.5, -2.5]]) {
     const t = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.4, .2, 24), std(0x2b1a10, { roughness: .4 })); t.position.set(x, -.6, z); s.add(t);
     const leg = new THREE.Mesh(new THREE.CylinderGeometry(.18, .5, 2.7, 10), std(0x1a0f08)); leg.position.set(x, -2.05, z); s.add(leg);
     const candle = new THREE.Mesh(sph, new THREE.MeshBasicMaterial({ color: 0xffb35c, toneMapped: false })); candle.scale.setScalar(.25); candle.position.set(x, -.2, z); s.add(candle);
@@ -198,6 +198,167 @@ function buildRoom() {
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: hazeTex, transparent: true, opacity: .07 + Math.random() * .05, depthWrite: false }));
     sp.scale.set(16 + Math.random() * 10, 8 + Math.random() * 5, 1); sp.position.set(-18 + Math.random() * 36, 5 + Math.random() * 6, -18 + Math.random() * 8); s.add(sp);
   }
+}
+
+/* ---------- Vida no bar: objetos e acontecimentos ao fundo ---------- */
+// Mapa de ambiente simples (luzes quentes num salão escuro) para reflexos realistas.
+function warmEnv(renderer) {
+  const tex = canvasTex(512, 256, (g, W, H) => {
+    const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#1a110b'); gr.addColorStop(.5, '#2a1a10'); gr.addColorStop(1, '#0a0605'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    for (let i = 0; i < 26; i++) { const x = Math.random() * W, y = H * (.25 + Math.random() * .3), r = 6 + Math.random() * 18; const rg = g.createRadialGradient(x, y, 0, x, y, r); rg.addColorStop(0, 'rgba(255,200,130,.95)'); rg.addColorStop(1, 'rgba(255,170,90,0)'); g.fillStyle = rg; g.fillRect(x - r, y - r, 2 * r, 2 * r); }
+    const top = g.createRadialGradient(W / 2, 0, 0, W / 2, 0, 90); top.addColorStop(0, 'rgba(255,225,170,1)'); top.addColorStop(1, 'rgba(255,200,140,0)'); g.fillStyle = top; g.fillRect(0, 0, W, 90);
+  });
+  tex.mapping = THREE.EquirectangularReflectionMapping;
+  const pm = new THREE.PMREMGenerator(renderer), env = pm.fromEquirectangular(tex).texture;
+  tex.dispose(); pm.dispose();
+  return env;
+}
+
+// Pessoa em pé com pernas que andam (para garçom, jogadores de sinuca).
+function makeStanding(o) {
+  const g = new THREE.Group(), body = makePlayer({ ...o, chair: false });
+  body.position.y = 2.6; g.add(body);
+  const pants = std(o.pants || 0x1c1a20, { roughness: .8 }), shoe = std(0x0d0a08, { roughness: .5 });
+  const legs = [];
+  for (const sx of [-1, 1]) {
+    const hip = new THREE.Group(); hip.position.set(sx * .38, 2.45, 0); g.add(hip);
+    const leg = new THREE.Mesh(new THREE.CapsuleGeometry(.27, 2.1, 4, 10), pants); leg.position.y = -1.25; hip.add(leg);
+    const foot = new THREE.Mesh(new RoundedBoxGeometry(.4, .25, .75, 2, .08), shoe); foot.position.set(0, -2.45, .18); hip.add(foot);
+    legs.push(hip);
+  }
+  g.userData = { body, legs, head: body.userData.head };
+  return g;
+}
+
+function buildLife() {
+  const s = V.bgScene, BZ = -22, A = V.bgAnim = [];
+  s.environment = warmEnv(V.bg);
+  const fgEnv = warmEnv(V.fg);
+  for (const m of V.tiles.values()) for (const mat of [m.userData.body.material, m.userData.fm]) { mat.envMap = fgEnv; mat.envMapIntensity = .45; }
+  const brass = std(0xb8893a, { roughness: .25, metalness: .85 }), sph = new THREE.SphereGeometry(1, 12, 10);
+  const basic = c => new THREE.MeshBasicMaterial({ color: c, toneMapped: false });
+
+  // TV com futebol (textura animada) e a luz azulada que ela joga no salão
+  const tv = document.createElement('canvas'); tv.width = 256; tv.height = 144;
+  const tvTex = new THREE.CanvasTexture(tv); tvTex.colorSpace = THREE.SRGBColorSpace;
+  const frame = new THREE.Mesh(new RoundedBoxGeometry(4.8, 3.0, .3, 2, .08), std(0x0c0c0e, { roughness: .4 })); frame.position.set(-15.5, 8.2, BZ - .6); s.add(frame);
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 2.6), new THREE.MeshBasicMaterial({ map: tvTex, toneMapped: false })); screen.position.set(-15.5, 8.2, BZ - .44); s.add(screen);
+  const tvLight = new THREE.PointLight(0x8fb8ff, 40, 16, 2); tvLight.position.set(-15.5, 7.5, BZ + 2); s.add(tvLight);
+  const ball = { x: 128, y: 72, vx: 1.6, vy: .7 }, men = [...Array(10)].map((_, i) => ({ x: 20 + Math.random() * 216, y: 20 + Math.random() * 104, t: i < 5 ? 0 : 1 }));
+  let tvLast = 0;
+  A.push(t => {
+    if (t - tvLast < .09) return; tvLast = t;
+    const g = tv.getContext('2d');
+    for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#2f7a34' : '#348a3a'; g.fillRect(i * 32, 0, 32, 144); }
+    g.strokeStyle = 'rgba(255,255,255,.8)'; g.lineWidth = 2; g.strokeRect(8, 8, 240, 128); g.beginPath(); g.moveTo(128, 8); g.lineTo(128, 136); g.stroke(); g.beginPath(); g.arc(128, 72, 18, 0, 7); g.stroke();
+    ball.x += ball.vx; ball.y += ball.vy; if (ball.x < 14 || ball.x > 242) ball.vx *= -1; if (ball.y < 14 || ball.y > 130) ball.vy *= -1;
+    for (const m of men) { m.x += (ball.x - m.x) * .02 + (Math.random() - .5) * 2; m.y += (ball.y - m.y) * .015 + (Math.random() - .5) * 2; g.fillStyle = m.t ? '#f2f2f2' : '#e0b020'; g.fillRect(m.x - 2, m.y - 4, 5, 8); }
+    g.fillStyle = '#fff'; g.beginPath(); g.arc(ball.x, ball.y, 2.5, 0, 7); g.fill();
+    g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(6, 6, 64, 14); g.fillStyle = '#fff'; g.font = '700 10px sans-serif'; g.fillText('FLA 1 x 1 FLU', 10, 17);
+    tvTex.needsUpdate = true;
+    tvLight.intensity = 30 + Math.random() * 25;
+  });
+
+  // Jukebox com luzes que mudam de cor
+  const jb = new THREE.Group(); jb.position.set(23, -3.4, -19.5); jb.rotation.y = -.5; s.add(jb);
+  jb.add(Object.assign(new THREE.Mesh(new RoundedBoxGeometry(2.6, 3.6, 1.5, 3, .2), std(0x5a1f12, { roughness: .3 })), {}));
+  jb.children[0].position.y = 1.8;
+  const arch = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, 1.5, 24, 1, false, -Math.PI / 2, Math.PI), std(0x5a1f12, { roughness: .3 })); arch.rotation.z = Math.PI / 2; arch.rotation.y = Math.PI / 2; arch.position.y = 3.6; jb.add(arch);
+  const jbGlow = [];
+  for (const [x, y, w, h] of [[0, 3.6, 2.2, .25], [-1.1, 2.0, .2, 3.0], [1.1, 2.0, .2, 3.0], [0, .9, 1.8, .5]]) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, .1), basic(0xff8030)); m.position.set(x, y, .78); jb.add(m); jbGlow.push(m); }
+  const jbLight = new THREE.PointLight(0xff6040, 35, 12, 2); jbLight.position.set(0, 2.5, 1.5); jb.add(jbLight);
+  A.push(t => { jbGlow.forEach((m, i) => m.material.color.setHSL((t * .08 + i * .18) % 1, .9, .55)); jbLight.color.setHSL((t * .08) % 1, .8, .55); });
+
+  // Mesa de sinuca com luminária e dois jogadores (um dá tacadas)
+  const pool = new THREE.Group(); pool.position.set(-17.5, 0, -11.5); s.add(pool);
+  const rail = new THREE.Mesh(new RoundedBoxGeometry(8.4, .6, 4.8, 2, .15), std(0x3a1f10, { roughness: .35 })); rail.position.y = -.5; pool.add(rail);
+  const cloth = new THREE.Mesh(new THREE.BoxGeometry(7.6, .1, 4.0), std(0x1f6a3a, { roughness: .9 })); cloth.position.y = -.17; pool.add(cloth);
+  for (const [x, z] of [[-3.5, -1.8], [3.5, -1.8], [-3.5, 1.8], [3.5, 1.8]]) { const l = new THREE.Mesh(new THREE.CylinderGeometry(.25, .3, 2.7, 10), std(0x2a160a)); l.position.set(x, -2.1, z); pool.add(l); }
+  const ballCols = [0xf2f2f2, 0xe0b020, 0x1a3a9a, 0xb02020, 0x5a2a8a, 0xe06a20, 0x1a7a3a, 0x7a1a1a, 0x111111];
+  ballCols.forEach((c, i) => { const b = new THREE.Mesh(new THREE.SphereGeometry(.13, 12, 10), std(c, { roughness: .15 })); b.position.set(i ? 1.4 + (i % 3) * .26 : -1.6, -.0, i ? ((i % 3) - 1) * .3 + (i > 5 ? .15 : 0) : 0); pool.add(b); });
+  const pShade = new THREE.Mesh(new THREE.CylinderGeometry(.6, 1.6, .8, 4, 1, true), new THREE.MeshStandardMaterial({ color: 0x1d4a2e, side: THREE.DoubleSide, roughness: .4 })); pShade.position.y = 5.2; pShade.rotation.y = Math.PI / 4; pShade.scale.set(2.2, 1, 1); pool.add(pShade);
+  const pBulb = new THREE.Mesh(new THREE.BoxGeometry(5, .1, .6), basic(0xfff0c8)); pBulb.position.y = 4.8; pool.add(pBulb);
+  const pLight = new THREE.PointLight(0xfff0c8, 90, 12, 2); pLight.position.y = 4.2; pool.add(pLight);
+  const cueGuy = makeStanding({ skin: 0x9a6a48, hair: 0x15100c, style: 'curly', pose: 'rest', pants: 0x2a2a3a });
+  cueGuy.userData.body.userData.shirt.color.setHex(0x3a5a7a);
+  cueGuy.position.set(-23.2, -3.4, -11.2); cueGuy.rotation.y = Math.PI / 2; s.add(cueGuy);
+  cueGuy.userData.body.rotation.x = .55;
+  const cue = new THREE.Mesh(new THREE.CylinderGeometry(.03, .06, 5.2, 8), std(0xc89a5a, { roughness: .4 })); cue.rotation.z = Math.PI / 2 - .08; cue.position.set(-20.6, .2, -11.4); s.add(cue);
+  const watcher = makeStanding({ skin: 0xd9a07a, hair: 0x5a3a22, style: 'bun', pose: 'drink', pants: 0x3a1a20 });
+  watcher.userData.body.userData.shirt.color.setHex(0x7a3a4a);
+  watcher.position.set(-13, -3.4, -14.6); watcher.rotation.y = -.4; s.add(watcher);
+  A.push(t => {
+    const k = (t % 6) / 6, strike = k > .82 ? Math.sin((k - .82) / .18 * Math.PI) : 0;
+    cue.position.x = -20.6 + strike * .9 - Math.sin(t * 2) * .15 * (k < .82 ? 1 : 0);
+    if (k > .9) pool.children.filter(c => c.geometry && c.geometry.type === 'SphereGeometry')[0].position.x = -1.6 + (k - .9) * 20;
+    else pool.children.filter(c => c.geometry && c.geometry.type === 'SphereGeometry')[0].position.x = -1.6;
+    watcher.userData.head.rotation.y = Math.sin(t * .7) * .4;
+  });
+
+  // Garçom atravessando o salão com bandeja
+  const waiter = makeStanding({ skin: 0x7a5038, hair: 0x120c08, style: 'bald', pose: 'drink', vest: true, pants: 0x111111 });
+  waiter.userData.body.userData.shirt.color.setHex(0xf0ece2);
+  const tray = new THREE.Mesh(new THREE.CylinderGeometry(.75, .75, .05, 20), brass); tray.position.set(-.55, 4.4, .9); waiter.add(tray);
+  for (const dx of [-.25, .2]) { const gl = new THREE.Mesh(new THREE.CylinderGeometry(.14, .12, .5, 12), std(0xe08a1c, { emissive: 0x3a1a00 })); gl.position.set(-.55 + dx, 4.7, .9 + dx * .5); waiter.add(gl); }
+  s.add(waiter);
+  A.push(t => {
+    const cyc = (t % 34) / 34, walking = cyc < .7, u = Math.min(1, cyc / .7), dir = Math.floor(t / 34) % 2 ? -1 : 1;
+    waiter.position.set(dir * (-30 + 60 * u), -3.4 + (walking ? Math.abs(Math.sin(t * 6)) * .12 : 0), -7.2);
+    waiter.rotation.y = dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+    waiter.visible = walking;
+    waiter.userData.legs.forEach((l, i) => { l.rotation.x = walking ? Math.sin(t * 6 + i * Math.PI) * .5 : 0; });
+  });
+
+  // Barman atrás do balcão, secando copos
+  const barman = makePlayer({ skin: 0xc68e64, hair: 0x2a1a12, style: 'bald', pose: 'drink', vest: true, chair: false });
+  barman.userData.shirt.color.setHex(0xe8e2d4);
+  barman.position.set(0, 1.0, -18.7); s.add(barman);
+  A.push(t => { barman.position.x = Math.sin(t * .12) * 9 + Math.sin(t * .5) * .4; barman.rotation.y = Math.cos(t * .12) * .5; barman.userData.head.rotation.y = Math.sin(t * .4) * .5; });
+
+  // Clientes no balcão conversando (cabeças e corpos se mexem)
+  s.children.filter(o => o.userData && o.userData.torso && o.position.z > -15 && o.position.z < -13).forEach((p, i) => {
+    A.push(t => { p.userData.head.rotation.y = Math.sin(t * .6 + i * 2) * .6; p.rotation.z = Math.sin(t * .4 + i) * .04; });
+  });
+
+  // Relógio de parede com a hora real
+  const clock = new THREE.Group(); clock.position.set(17, 12.6, BZ - .8); s.add(clock);
+  clock.add(new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, .15, 32).rotateX(Math.PI / 2), std(0xefe6d2, { roughness: .6 })));
+  clock.add(new THREE.Mesh(new THREE.TorusGeometry(1.1, .09, 8, 32), brass));
+  const hand = (len, w) => { const h = new THREE.Group(); const m = new THREE.Mesh(new THREE.BoxGeometry(w, len, .04), std(0x111111)); m.position.y = len / 2; h.add(m); h.position.z = .1; clock.add(h); return h; };
+  const hH = hand(.55, .1), hM = hand(.85, .06);
+  A.push(() => { const d = new Date(); hM.rotation.z = -d.getMinutes() / 60 * Math.PI * 2; hH.rotation.z = -((d.getHours() % 12) + d.getMinutes() / 60) / 12 * Math.PI * 2; });
+
+  // Barris e engradados
+  for (const [x, z] of [[-26, -18], [-24.2, -19.2]]) {
+    const b = new THREE.Mesh(lathe([[0, 0], [.9, 0], [1.05, .9], [1.1, 1.5], [1.05, 2.1], [.9, 3], [0, 3]], 20), std(0x5a3418, { roughness: .6 })); b.position.set(x, -3.4, z); s.add(b);
+    for (const y of [.4, 1.5, 2.6]) { const hp = new THREE.Mesh(new THREE.TorusGeometry(1.05, .05, 6, 24), std(0x2a2a2a, { metalness: .6, roughness: .4 })); hp.rotation.x = Math.PI / 2; hp.position.set(x, -3.4 + y, z); s.add(hp); }
+  }
+  for (const [x, y, z, r] of [[25, -2.7, -12.5, .2], [25.3, -1.3, -12.4, -.1], [23.6, -2.7, -11.4, .5]]) {
+    const c = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.4, 1.2), std(0xa8261e, { roughness: .6 })); c.position.set(x, y, z); c.rotation.y = r; s.add(c);
+    for (let i = 0; i < 6; i++) { const bt = new THREE.Mesh(new THREE.CylinderGeometry(.12, .12, .5, 8), std(0x3a1c08, { roughness: .2 })); bt.position.set(x - .6 + (i % 3) * .6, y + .9, z - .3 + Math.floor(i / 3) * .6); s.add(bt); }
+  }
+
+  // Cachorro dormindo perto da mesa, abanando o rabo de vez em quando
+  const dog = new THREE.Group(); dog.position.set(10.5, -3.4, -12); dog.rotation.y = -.4; s.add(dog);
+  const fur = std(0x8a5a2e, { roughness: .9 });
+  const torsoD = new THREE.Mesh(new THREE.CapsuleGeometry(.6, 1.6, 6, 12), fur); torsoD.rotation.z = Math.PI / 2; torsoD.position.y = .55; dog.add(torsoD);
+  const headD = new THREE.Mesh(new THREE.SphereGeometry(.5, 14, 12), fur); headD.position.set(1.5, .45, .2); dog.add(headD);
+  for (const sz of [-1, 1]) { const ear = new THREE.Mesh(new THREE.SphereGeometry(.22, 10, 8), std(0x5a3a1e)); ear.scale.set(.6, 1.2, .4); ear.position.set(1.4, .55, .2 + sz * .38); dog.add(ear); }
+  const tail = new THREE.Group(); tail.position.set(-1.3, .7, 0); dog.add(tail);
+  const tm = new THREE.Mesh(new THREE.CapsuleGeometry(.1, .8, 4, 8), fur); tm.position.y = .4; tm.rotation.z = .6; tail.add(tm);
+  A.push(t => { const wag = (t % 9) < 2; tail.rotation.x = wag ? Math.sin(t * 14) * .7 : 0; torsoD.scale.y = 1 + Math.sin(t * 1.4) * .04; });
+
+  // Neon "BAR" que pisca de vez em quando
+  const bar = V.neons && V.neons[0];
+  if (bar) A.push(t => { const k = t % 11; bar.material.opacity = (k > 8.6 && k < 9.4 && Math.sin(t * 60) > 0) ? .25 : 1; });
+
+  // Poeira flutuando na luz do spot (camada nítida)
+  const n = 140, pos = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { pos[i * 3] = (Math.random() - .5) * 10; pos[i * 3 + 1] = 1 + Math.random() * 9; pos[i * 3 + 2] = (Math.random() - .5) * 10; }
+  const dustGeo = new THREE.BufferGeometry(); dustGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ color: 0xffe2b0, size: .06, transparent: true, opacity: .55, depthWrite: false, blending: THREE.AdditiveBlending }));
+  V.fgScene.add(dust);
+  V.fgAnim = [t => { const a = dustGeo.attributes.position; for (let i = 0; i < n; i++) { let y = a.array[i * 3 + 1] + .004 + Math.sin(t + i) * .002; if (y > 10) y = 1; a.array[i * 3 + 1] = y; a.array[i * 3] += Math.sin(t * .3 + i) * .002; } a.needsUpdate = true; }];
 }
 
 /* ---------- Mesa com spot central (camada nítida) ---------- */
@@ -543,7 +704,7 @@ function toonHead(skin, { jaw = 1, jawW = 1, crown = 1 } = {}) {
   const h = new THREE.Group();
   const put = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); h.add(m); return m; };
   put(new THREE.SphereGeometry(.5, 24, 18), skin, 0, .18, -.02).scale.set(.92 * crown, 1, .95);
-  put(new RoundedBoxGeometry(.92 * jawW, .66 * jaw, .82, 4, .22), skin, 0, -.22, .06);
+  put(new THREE.SphereGeometry(.5, 24, 16), skin, 0, -.22, .07).scale.set(.94 * jawW, .7 * jaw, .84);
   put(new THREE.SphereGeometry(.13, 14, 12), skin, 0, -.02, .52).scale.set(1.05, 1.15, 1.1);
   for (const sx of [-1, 1]) put(new THREE.SphereGeometry(.13, 10, 8), skin, sx * .47 * jawW, .02, .02).scale.set(.45, 1, .8);
   return { h, put };
@@ -574,7 +735,7 @@ function makeMarreta() {
   for (const [x, y] of [[-.55, 1.2], [.55, 1.2], [-.62, 1.6], [.62, 1.6], [-.4, .7], [.4, .7]]) { const s = new THREE.Mesh(new THREE.SphereGeometry(.05, 8, 6), stud); s.position.set(x, y, .7); body.add(s); }
   const chain = new THREE.Mesh(new THREE.TorusGeometry(.42, .04, 6, 24), gold); chain.position.set(0, 1.82, .22); chain.rotation.x = Math.PI / 2 - .5; body.add(chain);
   const { h, put } = toonHead(skin, { jaw: 1.25, jawW: 1.2, crown: .88 });
-  const st = put(new RoundedBoxGeometry(1.14, .5, .86, 4, .22), stub, 0, -.33, .07); st.userData.noInk = true;
+  const st = put(new THREE.SphereGeometry(.5, 24, 16, 0, Math.PI * 2, Math.PI * .42, Math.PI * .58), stub, 0, -.22, .08); st.scale.set(1.15, .9, .88); st.userData.noInk = true;
   put(new RoundedBoxGeometry(.5, .1, .1, 2, .04), ink, 0, -.18, .5).userData.noInk = true;
   for (const sx of [-1, 1]) { const d = put(new RoundedBoxGeometry(.09, .32, .09, 2, .03), ink, sx * .25, -.32, .48); d.userData.noInk = true; }
   const lens = new THREE.MeshToonMaterial({ color: 0x0a0a0a, gradientMap: TOON_GRAD });
@@ -594,7 +755,8 @@ function makeNeide() {
   const body = toonBody({ width: .86, shirt, coat, skin, pose: 'cig', armR: .22 });
   const collar = new THREE.Mesh(new THREE.TorusGeometry(.55, .17, 10, 20), fur); collar.position.set(0, 1.86, 0); collar.rotation.x = Math.PI / 2 - .15; collar.scale.set(.9 * 1, 1, 1); body.add(collar);
   const { h, put } = toonHead(skin, { jaw: .82, jawW: .82 });
-  const bob = put(new THREE.SphereGeometry(.62, 24, 18, 0, Math.PI * 2, 0, Math.PI * .62), hair, 0, .14, -.08); bob.scale.set(1.05, 1.05, 1.0);
+  const bob = put(new THREE.SphereGeometry(.62, 24, 18, Math.PI / 2 + .85, Math.PI * 2 - 1.7, 0, Math.PI * .7), hair, 0, .12, -.1); bob.scale.set(1.05, 1.05, 1.0);
+  put(new THREE.SphereGeometry(.6, 24, 12, 0, Math.PI * 2, 0, Math.PI * .3), hair, 0, .16, -.06);
   put(new THREE.SphereGeometry(.3, 16, 12), hair, 0, .66, -.22);
   const bang = put(new THREE.CylinderGeometry(.5, .52, .22, 20, 1, false, -Math.PI / 2.6, Math.PI / 1.3), hair, 0, .4, .1); bang.rotation.x = .25;
   eyesSquint(put, ink, .12, .22); brows(put, ink, .24, .35, .24, .05);
@@ -614,7 +776,7 @@ function makeNeide() {
 function assemble({ body, head, shirt }) {
   const g = new THREE.Group(); g.add(body);
   const neck = new THREE.Mesh(new THREE.CylinderGeometry(.26, .32, .4, 12), head.children[0].material); neck.position.set(0, 2.05, .03); g.add(neck);
-  head.position.set(0, 2.72, .08); head.scale.setScalar(1.28); head.rotation.x = -.38; g.add(head);
+  head.position.set(0, 2.72, .08); head.scale.setScalar(1.28); head.rotation.order = 'YXZ'; head.rotation.x = -.38; g.add(head);
   outline(g, .05);
   g.userData = { torso: body.userData.torso, head, shirt, ember: body.userData.ember, phase: Math.random() * 6 };
   return g;
@@ -839,6 +1001,8 @@ function loop(now) {
     ud.body.material.color.lerp(dim ? cBoneDim : cBone, .15); ud.fm.color.lerp(dim ? cDim : cWhite, .15);
   }
   animPlayers(now); animSmoke(now); placeOverlays();
+  for (const f of V.bgAnim || []) f(now / 1000);
+  for (const f of V.fgAnim || []) f(now / 1000);
   V.fg.render(V.fgScene, V.cam);
   V.mid.render(V.midScene, V.cam);
   if (!(V.frame++ & 1)) V.bg.render(V.bgScene, V.cam);
@@ -1154,7 +1318,7 @@ function showCredits() {
       <li>Dominó clássico de 28 pedras, mano a mano e em duplas.</li>
       <li>Mesa 3D feita com Three.js.</li>
     </ul>
-    <p class="s-count" style="text-align:center">Versão 2.0</p>
+    <p class="s-count" style="text-align:center">Versão ${APP_VERSION} · atualiza sozinho</p>
     <button class="primary" data-close>Fechar</button>`);
 }
 
@@ -1203,6 +1367,57 @@ function showResult() {
   $('#resNext').addEventListener('click', onNext);
 }
 
+/* ================== Instalar e atualizar ================== */
+const APP_VERSION = '2.2.0'; // manter igual a VERSION em sw.js
+const isStandalone = () => matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone === true;
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+let installEvt = null;
+function refreshInstall() { $('#btnInstall').hidden = isStandalone() || !(installEvt || isIOS); }
+function toast(msg, action) {
+  const t = $('#toast');
+  t.innerHTML = `<span>${msg}</span>` + (action ? `<button>${action.label}</button>` : '');
+  if (action) t.querySelector('button').onclick = action.run;
+  t.hidden = false; clearTimeout(toast.tm);
+  if (!action) toast.tm = setTimeout(() => { t.hidden = true; }, 4500);
+}
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; refreshInstall(); });
+window.addEventListener('appinstalled', () => { installEvt = null; refreshInstall(); toast('App instalado! Procure a Pedra Mestra na tela inicial.'); });
+$('#btnInstall').addEventListener('click', async () => {
+  if (installEvt) {
+    installEvt.prompt();
+    const { outcome } = await installEvt.userChoice;
+    installEvt = null; refreshInstall();
+    if (outcome === 'accepted') toast('Instalando a Pedra Mestra…');
+    return;
+  }
+  sheet(`<h3>Instalar no iPhone</h3>
+    <ol>
+      <li>Toque em <strong>Compartilhar</strong> <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M5 12v7h14v-7"/></svg> na barra do Safari.</li>
+      <li>Escolha <strong>Adicionar à Tela de Início</strong>.</li>
+      <li>Toque em <strong>Adicionar</strong>.</li>
+    </ol>
+    <p>O app abre em tela cheia, funciona sem internet e se atualiza sozinho.</p>
+    <button class="primary" data-close>Entendi</button>`);
+});
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  let hadController = !!navigator.serviceWorker.controller; // na 1ª visita, a 1ª ativação não é atualização
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => {
+    const check = () => reg.update().catch(() => {});
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
+    setInterval(check, 30 * 60 * 1000);
+  }).catch(() => {});
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController) { hadController = true; return; }
+    if (reloading) return;
+    const apply = () => { reloading = true; try { sessionStorage.setItem('pm-updated', '1'); } catch (e) {} location.reload(); };
+    if (UI.screen === 'menu' && !sheetOpen()) apply();
+    else toast('Nova versão da Pedra Mestra disponível.', { label: 'Atualizar', run: apply });
+  });
+  try { if (sessionStorage.getItem('pm-updated')) { sessionStorage.removeItem('pm-updated'); setTimeout(() => toast(`Pedra Mestra atualizada para a versão ${APP_VERSION}.`), 900); } } catch (e) {}
+}
+
 /* ================== Início ================== */
 init3D();
 toMenu();
+refreshInstall();

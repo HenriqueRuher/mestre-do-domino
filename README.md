@@ -1,27 +1,27 @@
 # Pedra Mestra
 
-Dominó clássico numa mesa 3D de bar, para celular. Jogue solo, treine com nota ou assista o professor explicar cada jogada em balões curtos.
+<p align="center">
+  <a href="https://henriqueruher.github.io/mestre-do-domino/"><img src="icon-192.png" width="120" alt="Pedra Mestra"></a>
+</p>
+
+<h2 align="center"><a href="https://henriqueruher.github.io/mestre-do-domino/">▶ Jogar agora no navegador</a></h2>
+
+<p align="center">https://henriqueruher.github.io/mestre-do-domino/</p>
+
+Dominó clássico numa mesa 3D de bar, para celular. Jogue solo, treine vendo o professor explicar cada lance ou assista uma partida corrida.
 
 Criado por **Henrique Ruher**.
 
-## Abrir e instalar no celular
+## Baixar o app (grátis) e receber atualizações automáticas
 
-**Link do app:** https://henriqueruher.github.io/mestre-do-domino/
+Abra o link acima e toque em **Baixar o app** no menu do jogo.
 
-- **Android (Chrome):** abra o link e toque em *Instalar app* (ou menu ⋮ → *Adicionar à tela inicial*).
-- **iPhone (Safari):** abra o link, toque em *Compartilhar* → *Adicionar à Tela de Início*.
+- **Android e computador (Chrome/Edge):** o botão abre a instalação direto.
+- **iPhone (Safari):** o botão mostra o passo a passo: *Compartilhar* → *Adicionar à Tela de Início*.
 
-Depois de instalado, o app abre em tela cheia com o ícone da Pedra Mestra e funciona sem internet.
+Depois de instalado, o app abre em tela cheia, funciona sem internet e **se atualiza sozinho**: ele procura versões novas ao abrir e enquanto está em uso. Se você estiver no menu, a atualização entra na hora; no meio de uma partida, aparece um aviso com o botão *Atualizar*.
 
-**Baixar os arquivos:** [pedra-mestra.zip](https://github.com/HenriqueRuher/mestre-do-domino/archive/refs/heads/main.zip)
-
-Para rodar no computador, descompacte e sirva a pasta por HTTP (o navegador bloqueia módulos abertos direto do arquivo):
-
-```
-python -m http.server 8000
-```
-
-e abra http://localhost:8000.
+**Baixar os arquivos:** [pedra-mestra.zip](https://github.com/HenriqueRuher/mestre-do-domino/archive/refs/heads/main.zip). Para rodar no computador, sirva a pasta por HTTP (`python -m http.server 8000`) e abra http://localhost:8000.
 
 ## Modos
 
@@ -74,4 +74,4 @@ Cada jogada é avaliada só com o que aquele jogador poderia saber (a própria m
 - `engine.js` — regras e o professor (sem dependências; roda também em Node)
 - `app.js` — mesa 3D, balões e folhas
 - `vendor/` — Three.js r160 (incluído para funcionar offline)
-- `sw.js`, `manifest.webmanifest`, `icon*` — instalação como app
+- `sw.js`, `manifest.webmanifest`, `icon*` — instalação como app e atualização automática (ao publicar, aumente `VERSION` em `sw.js` e `APP_VERSION` em `app.js`)

@@ -80,6 +80,11 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px;border-ra
 .mi .chev{opacity:.5}
 .menu-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .mini-btn{padding:12px;border-radius:14px;background:var(--glass);border:1px solid var(--glass-line);font-weight:600;color:var(--ink-dim)}
+.install-btn{display:flex;align-items:center;gap:12px;text-align:left;padding:12px 16px;border-radius:16px;border:1.5px dashed rgba(234,165,63,.55);background:rgba(234,165,63,.08);color:var(--amber)}
+.install-btn b{display:block;color:var(--ink);font-weight:700;font-size:14.5px}
+.install-btn small{display:block;color:var(--ink-dim);font-size:12px;margin-top:1px}
+.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 12px);transform:translateX(-50%);z-index:40;display:flex;align-items:center;gap:12px;max-width:calc(100vw - 28px);padding:10px 12px 10px 16px;border-radius:14px;background:var(--bone);color:var(--pip);font-weight:600;font-size:14px;box-shadow:0 12px 30px rgba(0,0,0,.45);animation:popin .25s ease-out}
+.toast button{background:var(--pip);color:var(--bone);border-radius:10px;padding:8px 12px;font-weight:700;font-size:13px;flex:none}
 .byline{margin:4px 0 0;text-align:center;font-size:12px;color:var(--ink-faint);letter-spacing:.04em}
 .byline b{color:var(--ink-dim);font-weight:600}
 
@@ -229,6 +234,10 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px;border-ra
         <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 5l7 7-7 7"/></svg>
       </button>
     </nav>
+    <button class="install-btn" id="btnInstall" hidden>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>
+      <span><b>Baixar o app</b><small>Grátis · funciona sem internet · atualiza sozinho</small></span>
+    </button>
     <div class="menu-row">
       <button class="mini-btn" id="btnRules">Regras</button>
       <button class="mini-btn" id="btnCredits">Créditos</button>
@@ -254,6 +263,7 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px;border-ra
   </footer>
 </div>
 <div id="sheetRoot"></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
@@ -281,10 +291,5 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px;border-ra
 
 <script src="engine.js"></script>
 <script type="module" src="app.js"></script>
-<script>
-if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
-}
-</script>
 </body>
 </html>
