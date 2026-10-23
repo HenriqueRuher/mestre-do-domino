@@ -31,8 +31,8 @@ const sheetOpen = () => $('#sheetRoot').childElementCount > 0;
 const V = { ok: false, tiles: new Map(), players: {}, hl: new Map(), frame: 0, hid: '', flash: null, lastKey: null, W: 1, H: 1,
             cam: null, camCur: null, camGoal: null, smoke: [], ember: null, pad: null, padSig: '' };
 const SEATPOS = { '1x1': ['S', 'N'], '2x2': ['S', 'E', 'N', 'W'] };
-const PL = { N: { x: 0, z: -9.5 }, E: { x: 9.1, z: -.3 }, W: { x: -9.1, z: -.3 } };
-const ANCH = { S: [0, 2.15, 6.25], N: [0, 4.6, -9.5], E: [9.1, 4.6, -.3], W: [-9.1, 4.6, -.3] };
+const PL = { N: { x: 0, z: -9.2 }, E: { x: 9.3, z: -.3 }, W: { x: -9.3, z: -.3 } };
+const ANCH = { S: [0, 2.15, 6.25], N: [0, 6.6, -9.2], E: [9.3, 6.6, -.3], W: [-9.3, 6.6, -.3] };
 const RACK = { N: { c: [0, -6.3], along: [1, 0], n: [0, -1] }, E: { c: [5.95, -.3], along: [0, 1], n: [1, 0] }, W: { c: [-5.95, -.3], along: [0, 1], n: [-1, 0] } };
 const TARGET_PT = new THREE.Vector3(0, 0, 0.3);
 const ELEV = 38 * Math.PI / 180;
@@ -55,19 +55,21 @@ function init3D() {
   try {
     V.fg = new THREE.WebGLRenderer({ canvas: $('#fg3d'), antialias: true, alpha: true });
     V.bg = new THREE.WebGLRenderer({ canvas: $('#bg3d'), antialias: false });
+    V.mid = new THREE.WebGLRenderer({ canvas: $('#mid3d'), antialias: true, alpha: true });
   } catch (e) {
     stage.insertAdjacentHTML('beforeend', '<p class="no3d-msg">Seu navegador não conseguiu abrir a mesa 3D. Atualize o navegador ou ative a aceleração gráfica.</p>');
     return;
   }
   V.fg.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   V.bg.setPixelRatio(.75);
-  for (const r of [V.fg, V.bg]) r.toneMapping = THREE.ACESFilmicToneMapping;
-  V.fg.toneMappingExposure = .9; V.bg.toneMappingExposure = 1.2;
+  V.mid.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5)); V.mid.setClearColor(0x000000, 0);
+  for (const r of [V.fg, V.bg, V.mid]) r.toneMapping = THREE.ACESFilmicToneMapping;
+  V.fg.toneMappingExposure = .9; V.bg.toneMappingExposure = 1.2; V.mid.toneMappingExposure = 1.15;
   V.fg.setClearColor(0x000000, 0);
   V.fg.shadowMap.enabled = true; V.fg.shadowMap.type = THREE.PCFSoftShadowMap;
   V.cam = new THREE.PerspectiveCamera(34, 1, .5, 200);
-  V.fgScene = new THREE.Scene(); V.bgScene = new THREE.Scene();
-  buildRoom(); buildTable(); buildProps(); buildTiles(); buildPlayers();
+  V.fgScene = new THREE.Scene(); V.bgScene = new THREE.Scene(); V.midScene = new THREE.Scene();
+  buildRoom(); buildTable(); buildProps(); buildTiles(); buildMidLights(); buildPlayers();
   V.ray = new THREE.Raycaster();
   new ResizeObserver(resize3D).observe(stage);
   $('#fg3d').addEventListener('pointerdown', onPick);
@@ -340,93 +342,308 @@ function buildTiles() {
   }
 }
 
-/* ---------- Jogadores e cadeiras (camada desfocada) ---------- */
-// Cadeira de bar em madeira: assento, pernas, encosto com travessas e ripas.
+/* ---------- Jogadores e cadeiras (camada do meio, levemente desfocada) ---------- */
+const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+
+// Cadeira de bistrô: pernas torneadas, aro de reforço, encosto de madeira curvada e assento estofado.
 function makeChair() {
-  const g = new THREE.Group(), wood = std(0x3b2215, { roughness: .5 });
-  const add = (geo, x, y, z, rx = 0) => { const m = new THREE.Mesh(geo, wood); m.position.set(x, y, z); m.rotation.x = rx; g.add(m); };
-  add(new RoundedBoxGeometry(1.9, .18, 1.8, 2, .06), 0, -.55, -.2);
-  const leg = new THREE.CylinderGeometry(.075, .06, 2.85, 8);
-  for (const x of [-.8, .8]) for (const z of [-.95, .55]) add(leg, x, -2.0, z);
-  const post = new THREE.CylinderGeometry(.08, .075, 3.2, 8);
-  for (const x of [-.82, .82]) add(post, x, .95, -1.05, -.1);
-  add(new RoundedBoxGeometry(1.95, .38, .14, 2, .06), 0, 2.45, -1.2, -.1);
-  add(new RoundedBoxGeometry(1.7, .12, .1, 2, .04), 0, 1.15, -1.08, -.1);
-  for (const x of [-.45, 0, .45]) add(new THREE.BoxGeometry(.13, 1.15, .06), x, 1.8, -1.14, -.1);
+  const g = new THREE.Group();
+  const wood = std(0x4a2a16, { roughness: .4 }), leather = std(0x3d1611, { roughness: .45 }), brassM = std(0xc49546, { roughness: .25, metalness: .85 });
+  const mesh = (geo, mat, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); g.add(m); return m; };
+  mesh(new THREE.CylinderGeometry(1.0, .95, .16, 32), wood, 0, -.62, -.2);
+  const cush = mesh(new THREE.SphereGeometry(.9, 28, 12, 0, Math.PI * 2, 0, Math.PI / 2), leather, 0, -.55, -.2); cush.scale.y = .22;
+  for (let a = 0; a < 12; a++) mesh(new THREE.SphereGeometry(.03, 6, 5), brassM, Math.sin(a / 12 * Math.PI * 2) * .97, -.6, -.2 + Math.cos(a / 12 * Math.PI * 2) * .97);
+  const legGeo = lathe([[0, 0], [.06, 0], [.075, .25], [.055, .8], [.09, 1.3], [.055, 1.55], [.075, 2.2], [.1, 2.5], [.11, 2.72], [0, 2.72]], 10);
+  for (const [x, z] of [[-.7, .35], [.7, .35], [-.64, -.8], [.64, -.8]]) { const l = mesh(legGeo, wood, x, -3.42, z); l.rotation.z = x * .07; l.rotation.x = z > 0 ? -.06 : .06; }
+  const ring = mesh(new THREE.TorusGeometry(.7, .035, 6, 36), wood, 0, -2.25, -.22); ring.rotation.x = Math.PI / 2;
+  const tube = (pts, r, seg = 48) => mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => V3(...p))), seg, r, 8), wood);
+  tube([[-.78, -.55, -.95], [-.86, .6, -1.08], [-.8, 1.6, -1.15], [-.45, 2.25, -1.18], [0, 2.38, -1.2], [.45, 2.25, -1.18], [.8, 1.6, -1.15], [.86, .6, -1.08], [.78, -.55, -.95]], .075);
+  tube([[-.42, -.5, -.98], [-.5, .7, -1.1], [-.38, 1.55, -1.16], [0, 1.78, -1.18], [.38, 1.55, -1.16], [.5, .7, -1.1], [.42, -.5, -.98]], .05, 40);
+  tube([[-.84, 1.0, -1.11], [0, 1.08, -1.16], [.84, 1.0, -1.11]], .045, 16);
   return g;
 }
 
 // Membro em cápsula ligando dois pontos.
-function limb(a, b, r, mat) {
-  const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b);
+function limb(A, B, r, mat) {
   const m = new THREE.Mesh(new THREE.CapsuleGeometry(r, A.distanceTo(B), 4, 10), mat);
   m.position.copy(A).add(B).multiplyScalar(.5);
-  m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), B.clone().sub(A).normalize());
+  m.quaternion.setFromUnitVectors(V3(0, 1, 0), B.clone().sub(A).normalize());
   return m;
 }
 
-// Figuras sem rosto: só silhueta, acessórios e gestos, para a imaginação completar.
-// style: cap | fedora | bun | bald ; pose: rest | chin | drink | cig
-function makePlayer({ skin, hair, style, pose, vest = false, glasses = false, chair = true }) {
-  const g = new THREE.Group();
-  const shirt = std(0x888888, { roughness: .85 }), sk = std(skin, { roughness: .7 }), hr = std(hair, { roughness: .9 });
-  const dark = std(0x1a1512, { roughness: .8 });
-  if (chair) { const c = makeChair(); c.position.set(0, -.1, -.1); g.add(c); }
-  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(.85, 1.1, 6, 14), shirt); torso.position.set(0, .75, 0); torso.scale.set(1.18, 1, .75); g.add(torso);
-  if (vest) { const v = new THREE.Mesh(new THREE.CapsuleGeometry(.87, .8, 6, 14), dark); v.position.set(0, .6, .02); v.scale.set(1.2, 1, .78); g.add(v); }
-  const collar = new THREE.Mesh(new THREE.TorusGeometry(.33, .09, 6, 16), shirt); collar.rotation.x = Math.PI / 2; collar.position.set(0, 1.72, 0); g.add(collar);
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(.24, .28, .45, 10), sk); neck.position.set(0, 1.85, 0); g.add(neck);
-  const head = new THREE.Group(); head.position.set(0, 2.45, .05);
-  head.add(new THREE.Mesh(new THREE.SphereGeometry(.6, 20, 16), sk));
-  if (style !== 'bald') { const h = new THREE.Mesh(new THREE.SphereGeometry(.64, 20, 14, 0, Math.PI * 2, 0, Math.PI * .55), hr); h.rotation.x = -.3; h.position.set(0, .07, -.05); head.add(h); }
-  else { const beard = new THREE.Mesh(new THREE.SphereGeometry(.5, 16, 10, 0, Math.PI * 2, Math.PI * .55, Math.PI * .45), hr); beard.position.set(0, -.08, .12); head.add(beard); }
-  if (style === 'cap') {
-    const crown = new THREE.Mesh(new THREE.CylinderGeometry(.62, .66, .26, 20), dark); crown.position.set(0, .45, -.02); crown.rotation.x = -.15; head.add(crown);
-    const brim = new THREE.Mesh(new THREE.CylinderGeometry(.42, .42, .05, 16, 1, false, -Math.PI / 2, Math.PI), dark); brim.position.set(0, .36, .5); brim.rotation.x = .1; head.add(brim);
-  } else if (style === 'fedora') {
-    const crown = new THREE.Mesh(new THREE.CylinderGeometry(.46, .55, .55, 20), dark); crown.position.set(0, .62, 0); head.add(crown);
-    const band = new THREE.Mesh(new THREE.CylinderGeometry(.56, .56, .1, 20), std(0x5a1a14)); band.position.set(0, .4, 0); head.add(band);
-    const brim = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, .05, 24), dark); brim.position.set(0, .36, 0); brim.rotation.x = .08; head.add(brim);
-  } else if (style === 'bun') {
-    const bun = new THREE.Mesh(new THREE.SphereGeometry(.3, 14, 10), hr); bun.position.set(0, .55, -.42); head.add(bun);
-    const tail = new THREE.Mesh(new THREE.CapsuleGeometry(.22, .5, 4, 8), hr); tail.position.set(0, -.1, -.6); tail.rotation.x = .3; head.add(tail);
+// Mão: palma e dedos alinhados ao antebraço.
+function makeHand(pos, dir, mat, sx, curl) {
+  const h = new THREE.Group(); h.position.copy(pos); h.quaternion.setFromUnitVectors(V3(0, 0, 1), dir);
+  const palm = new THREE.Mesh(new RoundedBoxGeometry(.3, .12, .32, 2, .05), mat); palm.position.z = .14; h.add(palm);
+  for (let i = 0; i < 4; i++) {
+    const f = new THREE.Mesh(new THREE.CapsuleGeometry(.042, .17, 3, 6), mat);
+    f.position.set(-.11 + i * .073, -.02 - curl * .06, .36 - curl * .04); f.rotation.x = Math.PI / 2 + curl; h.add(f);
   }
-  if (glasses) for (const sx of [-1, 1]) { const l = new THREE.Mesh(new THREE.TorusGeometry(.13, .025, 6, 14), new THREE.MeshBasicMaterial({ color: 0xffe8c0, toneMapped: false })); l.position.set(sx * .2, .05, .56); head.add(l); }
-  g.add(head);
-  // Braços: ombro → cotovelo → mão, conforme o gesto
-  const arms = { rest: [[.95, .55, .75], [.6, .3, 1.65]], chin: [[.85, .55, .95], [.22, 2.0, .6]], drink: [[1.0, .55, .7], [.55, 1.0, 1.3]], cig: [[.95, .6, .8], [.3, 2.05, .65]] };
+  const t = new THREE.Mesh(new THREE.CapsuleGeometry(.045, .15, 3, 6), mat); t.position.set(sx * .17, .02, .16); t.rotation.set(Math.PI / 2, 0, sx * .9); h.add(t);
+  return h;
+}
+
+// Figuras sem rosto: silhueta, roupa, acessórios e gestos — a imaginação completa o resto.
+// style: cap | fedora | bun | curly | bald ; pose: rest | chin | drink | cig
+function makePlayer({ skin, hair, style, pose, vest = false, jacket = false, glasses = false, watch = true, chair = true }) {
+  const g = new THREE.Group();
+  const shirt = std(0x888888, { roughness: .8 }), sk = std(skin, { roughness: .6 }), hr = std(hair, { roughness: .85 });
+  const dark = std(0x17120f, { roughness: .75, side: THREE.DoubleSide }), cloth2 = std(0x2b2622, { roughness: .8, side: THREE.DoubleSide });
+  const gold = std(0xd8a64a, { roughness: .2, metalness: .9 });
+  const put = (geo, mat, x, y, z, parent = g) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); parent.add(m); return m; };
+  if (chair) g.add(makeChair());
+
+  // Tronco torneado e achatado, ombros, gola com pontas e botões
+  const torso = put(lathe([[0, -.2], [.66, -.2], [.7, .25], [.74, .8], [.82, 1.2], [.9, 1.45], [.84, 1.68], [.55, 1.84], [.3, 1.9], [0, 1.9]], 28), shirt, 0, 0, 0);
+  torso.scale.z = .72;
+  for (const sx of [-1, 1]) put(new THREE.SphereGeometry(.34, 16, 12), shirt, sx * .86, 1.58, 0);
+  const collar = put(new THREE.TorusGeometry(.32, .07, 6, 18), shirt, 0, 1.86, .02); collar.rotation.x = Math.PI / 2 - .2;
+  for (const sx of [-1, 1]) { const pt = put(new THREE.BoxGeometry(.22, .04, .2), shirt, sx * .14, 1.8, .3); pt.rotation.set(-.6, sx * .5, sx * .4); }
+  const btn = std(0xe8e0d0, { roughness: .4 });
+  [[1.55, .64], [1.23, .6], [.91, .56], [.59, .54]].forEach(([y, z]) => put(new THREE.SphereGeometry(.035, 8, 6), btn, 0, y, z));
+
+  // Colete ou paletó abertos na frente; senão, suspensórios
+  if (vest || jacket) {
+    const prof = jacket ? [[.73, -.2], [.77, .3], [.81, .85], [.89, 1.22], [.96, 1.48], [.9, 1.7], [.6, 1.86], [.4, 1.9]] : [[.7, .05], [.74, .5], [.78, .9], [.86, 1.25], [.89, 1.42], [.6, 1.6]];
+    const v = put(new THREE.LatheGeometry(prof.map(([x, y]) => new THREE.Vector2(x, y)), 28, .42, Math.PI * 2 - .84), jacket ? cloth2 : dark, 0, 0, 0); v.scale.z = .75;
+    if (vest) for (let i = 0; i < 3; i++) put(new THREE.SphereGeometry(.03, 6, 6), gold, .26, 1.1 - i * .25, .58);
+    if (jacket) for (const sx of [-1, 1]) { const lap = put(new THREE.BoxGeometry(.24, .75, .03), cloth2, sx * .3, 1.42, .63); lap.rotation.set(-.25, sx * .35, sx * .35); }
+  } else for (const sx of [-1, 1]) { const s = put(new THREE.BoxGeometry(.1, 1.7, .02), std(0x5a1a14), sx * .36, .85, .62); s.rotation.x = -.12; }
+
+  // Pescoço e cabeça sem feições: só volume e uma faixa de sombra nos olhos
+  put(new THREE.CylinderGeometry(.23, .27, .42, 12), sk, 0, 1.98, .02);
+  const head = new THREE.Group(); head.position.set(0, 2.55, .06); g.add(head);
+  put(new THREE.SphereGeometry(.56, 24, 18), sk, 0, 0, 0, head).scale.set(.92, 1.06, .98);
+  put(new THREE.SphereGeometry(.42, 18, 12), sk, 0, -.26, .1, head).scale.set(1, .8, .95);
+  put(new THREE.ConeGeometry(.08, .2, 8), sk, 0, -.06, .56, head).rotation.x = Math.PI / 2;
+  for (const sx of [-1, 1]) put(new THREE.SphereGeometry(.12, 10, 8), sk, sx * .52, -.02, 0, head).scale.set(.45, 1, .8);
+  const shade = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .45 });
+  put(new THREE.SphereGeometry(.53, 20, 6, Math.PI / 2 - .95, 1.9, Math.PI * .43, Math.PI * .11), shade, 0, 0, .04, head).scale.set(.95, 1.06, 1.04);
+
+  if (style === 'bald') {
+    put(new THREE.SphereGeometry(.45, 16, 10, Math.PI / 2 - .9, 1.8, Math.PI * .55, Math.PI * .4), hr, 0, -.15, .12, head);
+  } else if (style === 'curly') {
+    for (let i = 0; i < 22; i++) { const a = i * 2.4, r = .5, y = .15 + (i % 5) * .08; put(new THREE.SphereGeometry(.17, 10, 8), hr, Math.cos(a) * r * (1 - y * .5), y, Math.sin(a) * r * (1 - y * .5) - .05, head); }
+  } else {
+    const h = put(new THREE.SphereGeometry(.6, 22, 14, 0, Math.PI * 2, 0, Math.PI * .52), hr, 0, .08, -.04, head); h.scale.set(.96, 1.02, 1.02); h.rotation.x = -.25;
+  }
+  if (style === 'cap') {
+    const cap = put(new THREE.SphereGeometry(.66, 22, 12, 0, Math.PI * 2, 0, Math.PI * .5), dark, 0, .2, .02, head); cap.scale.set(1.05, .48, 1.12); cap.rotation.x = .18;
+    put(new THREE.CylinderGeometry(.46, .48, .045, 18, 1, false, -Math.PI / 2, Math.PI), dark, 0, .2, .42, head).rotation.x = .22;
+    put(new THREE.SphereGeometry(.05, 8, 6), dark, 0, .52, .08, head);
+  } else if (style === 'fedora') {
+    put(lathe([[0, 0], [.5, 0], [.52, .12], [.48, .45], [.38, .56], [.15, .5], [0, .54]], 24), dark, 0, .3, 0, head);
+    put(new THREE.CylinderGeometry(.53, .53, .11, 24), std(0x5a1a14), 0, .36, 0, head);
+    put(lathe([[.5, 0], [.85, -.01], [1.02, .06], [1.04, .1]], 32), dark, 0, .3, 0, head).rotation.x = .1;
+    const feather = put(new THREE.BoxGeometry(.04, .32, .1), std(0x2d4a3a), .5, .5, -.1, head); feather.rotation.z = -.5;
+  } else if (style === 'bun') {
+    put(new THREE.SphereGeometry(.28, 14, 10), hr, 0, .45, -.45, head);
+    put(new THREE.TorusGeometry(.12, .04, 6, 12), std(0x8a2a2a), 0, .3, -.47, head).rotation.x = -.6;
+    for (const sx of [-1, 1]) { const s = put(new THREE.CapsuleGeometry(.05, .5, 3, 6), hr, sx * .46, -.2, .22, head); s.rotation.z = sx * .15; }
+  }
+  if (glasses) {
+    const frame = std(0x111111, { roughness: .3, metalness: .6 }), glint = new THREE.MeshBasicMaterial({ color: 0xfff0d0, transparent: true, opacity: .55, toneMapped: false });
+    for (const sx of [-1, 1]) { put(new THREE.TorusGeometry(.13, .022, 6, 16), frame, sx * .2, .04, .55, head); put(new THREE.CircleGeometry(.12, 14), glint, sx * .2, .04, .552, head); }
+    put(new THREE.BoxGeometry(.14, .02, .02), frame, 0, .06, .56, head);
+  }
+
+  // Braços: ombro → cotovelo → mão, conforme o gesto; mangas dobradas e relógio
+  const arms = { rest: [[.95, .65, .7], [.55, .35, 1.55]], chin: [[.8, .6, 1.0], [.2, 2.15, .62]], drink: [[1.05, .6, .65], [.5, 1.05, 1.25]], cig: [[.95, .65, .8], [.28, 2.1, .7]] };
   const poses = pose === 'rest' ? ['rest', 'rest'] : [pose, 'rest'];
   [1, -1].forEach((sx, i) => {
-    const [el, ha] = arms[poses[i]], sh = [sx * 1.0, 1.45, 0];
-    const E = [sx * el[0], el[1], el[2]], H = [sx * ha[0], ha[1], ha[2]];
-    g.add(limb(sh, E, .25, shirt)); g.add(limb(E, H, .21, sk));
-    const hand = new THREE.Mesh(new THREE.SphereGeometry(.24, 12, 10), sk); hand.position.set(...H); g.add(hand);
-    if (poses[i] === 'drink') { const cup = new THREE.Mesh(new THREE.CylinderGeometry(.2, .17, .45, 14), std(0xd08a2a, { roughness: .2, emissive: 0x5a2c00, transparent: true, opacity: .85 })); cup.position.set(H[0], H[1] + .15, H[2] + .1); g.add(cup); }
-    if (poses[i] === 'cig') { const em = new THREE.Mesh(new THREE.SphereGeometry(.07, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff6a20, toneMapped: false })); em.position.set(H[0] + sx * .05, H[1] + .1, H[2] + .35); g.add(em); }
+    const [e, hh] = arms[poses[i]], S = V3(sx * .9, 1.55, 0), E = V3(sx * e[0], e[1], e[2]), H = V3(sx * hh[0], hh[1], hh[2]);
+    const dir = H.clone().sub(E).normalize(), mid = E.clone().lerp(H, .35);
+    g.add(limb(S, E, .25, shirt));
+    put(new THREE.SphereGeometry(.245, 12, 10), shirt, E.x, E.y, E.z);
+    g.add(limb(E, mid, .235, shirt));
+    const cuff = new THREE.Mesh(new THREE.TorusGeometry(.235, .065, 6, 14), shirt); cuff.position.copy(mid); cuff.quaternion.setFromUnitVectors(V3(0, 0, 1), dir); g.add(cuff);
+    g.add(limb(mid, H, .19, sk));
+    if (watch && sx === -1) { const w = new THREE.Mesh(new THREE.TorusGeometry(.2, .05, 6, 14), gold); w.position.copy(H.clone().lerp(E, .14)); w.quaternion.setFromUnitVectors(V3(0, 0, 1), dir); g.add(w); }
+    g.add(makeHand(H, dir, sk, sx, poses[i] === 'rest' ? .35 : poses[i] === 'chin' ? .9 : 1.1));
+    if (poses[i] === 'drink') {
+      const glass = new THREE.MeshStandardMaterial({ color: 0xdfeef0, roughness: .05, transparent: true, opacity: .25, depthWrite: false });
+      put(lathe([[0, 0], [.2, 0], [.21, .02], [.22, .42]], 18), glass, H.x - sx * .05, H.y - .12, H.z + .12);
+      put(new THREE.CylinderGeometry(.19, .18, .22, 16), std(0xc87a1e, { roughness: .2, emissive: 0x4a2200, transparent: true, opacity: .9 }), H.x - sx * .05, H.y - .01, H.z + .12);
+      for (const d of [-.06, .07]) put(new THREE.BoxGeometry(.11, .11, .11), new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: .5, roughness: .1 }), H.x - sx * .05 + d, H.y + .1, H.z + .12 + d);
+    }
+    if (poses[i] === 'cig') {
+      const c = put(new THREE.CylinderGeometry(.03, .03, .42, 8), std(0xf2eee6), H.x - sx * .08, H.y + .05, H.z + .3); c.rotation.x = Math.PI / 2 - .3;
+      const em = put(new THREE.SphereGeometry(.045, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff6a20, toneMapped: false }), H.x - sx * .08, H.y + .11, H.z + .5);
+      g.userData.ember = em;
+    }
   });
-  g.userData = { torso, head, shirt, phase: Math.random() * 6 };
+  g.userData = { ...g.userData, torso, head, shirt, phase: Math.random() * 6 };
   return g;
 }
+
+function buildMidLights() {
+  const s = V.midScene;
+  s.add(new THREE.HemisphereLight(0x8a6440, 0x070403, .35));
+  const spill = new THREE.SpotLight(0xffd39a, 1500, 0, .95, .8, 2); spill.position.set(0, 15, .6); spill.target.position.set(0, 0, -4); s.add(spill, spill.target);
+  const rim = new THREE.DirectionalLight(0xffa060, 1.8); rim.position.set(0, 7, -26); s.add(rim);
+  const pink = new THREE.PointLight(0xff4f86, 90, 34, 2); pink.position.set(-11, 8, -15); s.add(pink);
+  const amber = new THREE.PointLight(0xffa53a, 70, 34, 2); amber.position.set(11, 8, -15); s.add(amber);
+}
+
+/* ---------- A turma da mesa em estilo cartum (sombra chapada + contorno de tinta) ---------- */
+const TOON_GRAD = (() => { const d = new Uint8Array([70, 70, 70, 255, 150, 150, 150, 255, 255, 255, 255, 255]); const t = new THREE.DataTexture(d, 3, 1, THREE.RGBAFormat); t.minFilter = t.magFilter = THREE.NearestFilter; t.needsUpdate = true; return t; })();
+const toon = (color, o = {}) => new THREE.MeshToonMaterial({ color, gradientMap: TOON_GRAD, ...o });
+const INK = new THREE.MeshBasicMaterial({ color: 0x0b0806, side: THREE.BackSide });
+
+// Contorno por "casca invertida": cópia preta um pouco maior, só com as faces de trás.
+function outline(root, t = .045) {
+  const meshes = [];
+  root.traverse(o => { if (o.isMesh && !o.userData.noInk && !(o.material && o.material.isMeshBasicMaterial)) meshes.push(o); });
+  for (const m of meshes) {
+    const g = m.geometry; if (!g.boundingSphere) g.computeBoundingSphere(); if (!g.boundingBox) g.computeBoundingBox();
+    const k = 1 + t / Math.max(.05, g.boundingSphere.radius * Math.max(m.scale.x, m.scale.y, m.scale.z));
+    const hull = new THREE.Mesh(g, INK); hull.userData.noInk = true;
+    const c = g.boundingBox.getCenter(new THREE.Vector3());
+    hull.scale.setScalar(k); hull.position.copy(c).multiplyScalar(1 - k);
+    m.add(hull);
+  }
+  return root;
+}
+
+// Corpo caricato: ombros largos, cintura fina, braços grossos e mãos de luva.
+function toonBody({ width = 1, shirt, jacket, vest, coat, skin, armR = .27, pose = 'rest' }) {
+  const g = new THREE.Group();
+  const put = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); g.add(m); return m; };
+  const torsoProf = [[0, -.2], [.6, -.2], [.64, .3], [.7, .8], [.9, 1.25], [1.1, 1.55], [1.04, 1.8], [.62, 1.96], [.36, 2.02], [0, 2.02]];
+  const torso = put(lathe(torsoProf, 30), shirt, 0, 0, 0); torso.scale.set(width, 1, .7);
+  const outer = jacket || vest || coat;
+  if (outer) {
+    const prof = (vest ? torsoProf.slice(1, 7) : torsoProf.slice(1)).map(([x, y]) => new THREE.Vector2(x + .05, y));
+    const j = put(new THREE.LatheGeometry(prof, 30, vest ? .5 : .38, Math.PI * 2 - (vest ? 1 : .76)), outer, 0, 0, 0); j.scale.set(width, 1, .74);
+    if (jacket || coat) for (const sx of [-1, 1]) {
+      const lap = put(new THREE.BoxGeometry(.38, .95, .05), outer, sx * .34 * width, 1.45, .66); lap.rotation.set(-.3, sx * .45, sx * .38);
+      const flap = put(new THREE.BoxGeometry(.5, .3, .06), outer, sx * .5 * width, 1.88, .38); flap.rotation.set(-.9, sx * .3, sx * .5);
+    }
+  }
+  const sleeve = jacket || coat || shirt;
+  for (const sx of [-1, 1]) put(new THREE.SphereGeometry(.4, 16, 12), outer || shirt, sx * 1.02 * width, 1.62, 0);
+  const arms = { rest: [[1.05, .62, .75], [.62, .35, 1.6]], chin: [[.85, .6, 1.0], [.2, 2.15, .66]], cig: [[1.0, .65, .8], [.32, 2.05, .72]], fist: [[1.1, .6, .8], [.5, .45, 1.55]] };
+  const poses = pose === 'rest' || pose === 'fist' ? [pose, pose] : [pose, 'rest'];
+  [1, -1].forEach((sx, i) => {
+    const [e, h] = arms[poses[i]], S = V3(sx * 1.0 * width, 1.58, 0), E = V3(sx * e[0] * width, e[1], e[2]), H = V3(sx * h[0], h[1], h[2]);
+    g.add(limb(S, E, armR, sleeve));
+    const el = new THREE.Mesh(new THREE.SphereGeometry(armR * 1.02, 12, 10), sleeve); el.position.copy(E); g.add(el);
+    g.add(limb(E, H, armR * .82, sleeve));
+    const cuff = new THREE.Mesh(new THREE.TorusGeometry(armR * .85, armR * .22, 6, 14), (jacket || coat) ? toon(0x222222) : shirt); cuff.position.copy(H.clone().lerp(E, .1)); cuff.quaternion.setFromUnitVectors(V3(0, 0, 1), H.clone().sub(E).normalize()); g.add(cuff);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(armR * 1.05, 14, 12), skin); hand.position.copy(H); hand.scale.set(1, .8, 1.15); g.add(hand);
+    const th = new THREE.Mesh(new THREE.CapsuleGeometry(armR * .3, armR * .5, 3, 6), skin); th.position.copy(H).add(V3(-sx * armR * .9, armR * .3, armR * .2)); th.rotation.z = sx * .8; g.add(th);
+    g.userData['hand' + i] = H;
+  });
+  g.userData.torso = torso;
+  return g;
+}
+
+// Cabeça caricata: crânio pequeno, mandíbula grande em bloco, nariz redondo, orelhas.
+function toonHead(skin, { jaw = 1, jawW = 1, crown = 1 } = {}) {
+  const h = new THREE.Group();
+  const put = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); h.add(m); return m; };
+  put(new THREE.SphereGeometry(.5, 24, 18), skin, 0, .18, -.02).scale.set(.92 * crown, 1, .95);
+  put(new RoundedBoxGeometry(.92 * jawW, .66 * jaw, .82, 4, .22), skin, 0, -.22, .06);
+  put(new THREE.SphereGeometry(.13, 14, 12), skin, 0, -.02, .52).scale.set(1.05, 1.15, 1.1);
+  for (const sx of [-1, 1]) put(new THREE.SphereGeometry(.13, 10, 8), skin, sx * .47 * jawW, .02, .02).scale.set(.45, 1, .8);
+  return { h, put };
+}
+const eyesSquint = (put, ink, y = .12, tilt = .12) => { for (const sx of [-1, 1]) { const e = put(new THREE.CapsuleGeometry(.03, .14, 3, 6), ink, sx * .19, y, .46); e.rotation.z = Math.PI / 2 + sx * tilt; e.userData.noInk = true; } };
+const brows = (put, mat, y = .24, angle = .25, w = .3, th = .09) => { for (const sx of [-1, 1]) { const b = put(new RoundedBoxGeometry(w, th, .1, 2, .03), mat, sx * .2, y, .45); b.rotation.z = -sx * angle; } };
+const mouthLine = (put, ink, y = -.34, smile = -1, w = .15) => { const m = put(new THREE.TorusGeometry(w, .022, 6, 14, Math.PI * .6), ink, 0, y, .48); m.rotation.z = smile > 0 ? Math.PI + Math.PI * .2 : Math.PI * .2; m.userData.noInk = true; return m; };
+
+function makeTiao() {
+  const skin = toon(0xd9a07a), white = toon(0xe9e4dc), cap = toon(0x3a3f4a), ink = new THREE.MeshBasicMaterial({ color: 0x1a120c });
+  const shirt = toon(0xf0ead8), vest = toon(0x5a4632);
+  const body = toonBody({ width: .95, shirt, vest, skin, pose: 'chin', armR: .25 });
+  const { h, put } = toonHead(skin, { jaw: .95 });
+  for (const sx of [-1, 1]) put(new THREE.SphereGeometry(.2, 12, 10), white, sx * .43, .12, -.12).scale.set(.7, 1.1, 1.2);
+  const c = put(new THREE.SphereGeometry(.6, 22, 12, 0, Math.PI * 2, 0, Math.PI * .5), cap, 0, .4, .02); c.scale.set(1.08, .5, 1.15); c.rotation.x = .2;
+  put(new THREE.CylinderGeometry(.44, .46, .05, 18, 1, false, -Math.PI / 2, Math.PI), cap, 0, .4, .42).rotation.x = .25;
+  put(new THREE.SphereGeometry(.05, 8, 6), cap, 0, .7, .1);
+  eyesSquint(put, ink, .14, .05); brows(put, white, .25, -.15, .3, .11);
+  for (const sx of [-1, 1]) { const m = put(new THREE.SphereGeometry(.17, 14, 10), white, sx * .13, -.2, .5); m.scale.set(1.3, .7, .7); m.rotation.z = sx * -.45; }
+  for (const y of [.34, .4]) { const w = put(new THREE.BoxGeometry(.32, .015, .01), ink, 0, y, .43); w.userData.noInk = true; }
+  return { body, head: h, shirt };
+}
+
+function makeMarreta() {
+  const skin = toon(0xb97c55), stub = toon(0x8f8a8c), leather = toon(0x26221f), ink = new THREE.MeshBasicMaterial({ color: 0x120c08 });
+  const shirt = toon(0xd9c28a), gold = toon(0xe0b04a, { emissive: 0x3a2400 }), stud = toon(0xc9c9c9);
+  const body = toonBody({ width: 1.28, shirt, jacket: leather, skin, pose: 'fist', armR: .33 });
+  for (const [x, y] of [[-.55, 1.2], [.55, 1.2], [-.62, 1.6], [.62, 1.6], [-.4, .7], [.4, .7]]) { const s = new THREE.Mesh(new THREE.SphereGeometry(.05, 8, 6), stud); s.position.set(x, y, .7); body.add(s); }
+  const chain = new THREE.Mesh(new THREE.TorusGeometry(.42, .04, 6, 24), gold); chain.position.set(0, 1.82, .22); chain.rotation.x = Math.PI / 2 - .5; body.add(chain);
+  const { h, put } = toonHead(skin, { jaw: 1.25, jawW: 1.2, crown: .88 });
+  const st = put(new RoundedBoxGeometry(1.14, .5, .86, 4, .22), stub, 0, -.33, .07); st.userData.noInk = true;
+  put(new RoundedBoxGeometry(.5, .1, .1, 2, .04), ink, 0, -.18, .5).userData.noInk = true;
+  for (const sx of [-1, 1]) { const d = put(new RoundedBoxGeometry(.09, .32, .09, 2, .03), ink, sx * .25, -.32, .48); d.userData.noInk = true; }
+  const lens = new THREE.MeshToonMaterial({ color: 0x0a0a0a, gradientMap: TOON_GRAD });
+  for (const sx of [-1, 1]) {
+    put(new THREE.CylinderGeometry(.16, .16, .05, 20), lens, sx * .2, .12, .5).rotation.x = Math.PI / 2;
+    const gl = put(new THREE.CircleGeometry(.05, 10), new THREE.MeshBasicMaterial({ color: 0xffffff }), sx * .2 + .05, .17, .53); gl.userData.noInk = true;
+  }
+  put(new THREE.BoxGeometry(.14, .03, .03), lens, 0, .14, .52);
+  brows(put, toon(0x1a1410), .32, .3, .34, .1);
+  const pick = put(new THREE.CylinderGeometry(.012, .012, .3, 6), toon(0xe0c890), .2, -.34, .55); pick.rotation.set(Math.PI / 2 - .2, 0, -.6); pick.userData.noInk = true;
+  return { body, head: h, shirt };
+}
+
+function makeNeide() {
+  const skin = toon(0xf0c9a8), hair = toon(0xa8402a), coat = toon(0x2e2a33), fur = toon(0x8a7a6a), ink = new THREE.MeshBasicMaterial({ color: 0x140c0a });
+  const shirt = toon(0x7a2a3a), red = toon(0xc0202a), frame = toon(0x8a1a2a), gold = toon(0xe0b04a);
+  const body = toonBody({ width: .86, shirt, coat, skin, pose: 'cig', armR: .22 });
+  const collar = new THREE.Mesh(new THREE.TorusGeometry(.55, .17, 10, 20), fur); collar.position.set(0, 1.86, 0); collar.rotation.x = Math.PI / 2 - .15; collar.scale.set(.9 * 1, 1, 1); body.add(collar);
+  const { h, put } = toonHead(skin, { jaw: .82, jawW: .82 });
+  const bob = put(new THREE.SphereGeometry(.62, 24, 18, 0, Math.PI * 2, 0, Math.PI * .62), hair, 0, .14, -.08); bob.scale.set(1.05, 1.05, 1.0);
+  put(new THREE.SphereGeometry(.3, 16, 12), hair, 0, .66, -.22);
+  const bang = put(new THREE.CylinderGeometry(.5, .52, .22, 20, 1, false, -Math.PI / 2.6, Math.PI / 1.3), hair, 0, .4, .1); bang.rotation.x = .25;
+  eyesSquint(put, ink, .12, .22); brows(put, ink, .24, .35, .24, .05);
+  for (const sx of [-1, 1]) {
+    const fr = put(new THREE.TorusGeometry(.12, .025, 6, 16), frame, sx * .2, .13, .5); fr.scale.set(1.25, .85, 1);
+    const wing = put(new THREE.BoxGeometry(.12, .03, .03), frame, sx * .36, .2, .46); wing.rotation.z = sx * .6;
+    put(new THREE.SphereGeometry(.05, 8, 6), gold, sx * .42, -.08, .02);
+  }
+  for (const [y, sy] of [[-.31, .7], [-.37, .6]]) { const l = put(new THREE.SphereGeometry(.09, 12, 8), red, 0, y, .46); l.scale.set(1.3, sy * .6, .5); l.userData.noInk = true; }
+  const hand = body.userData.hand0;
+  const holder = new THREE.Mesh(new THREE.CylinderGeometry(.018, .018, .6, 6), toon(0x111111)); holder.position.copy(hand).add(V3(-.12, .08, .32)); holder.rotation.x = Math.PI / 2 - .35; body.add(holder);
+  const em = new THREE.Mesh(new THREE.SphereGeometry(.04, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff6a20, toneMapped: false })); em.position.copy(hand).add(V3(-.12, .19, .6)); body.add(em);
+  body.userData.ember = em;
+  return { body, head: h, shirt };
+}
+
+function assemble({ body, head, shirt }) {
+  const g = new THREE.Group(); g.add(body);
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(.26, .32, .4, 12), head.children[0].material); neck.position.set(0, 2.05, .03); g.add(neck);
+  head.position.set(0, 2.72, .08); head.scale.setScalar(1.28); head.rotation.x = -.38; g.add(head);
+  outline(g, .05);
+  g.userData = { torso: body.userData.torso, head, shirt, ember: body.userData.ember, phase: Math.random() * 6 };
+  return g;
+}
+
 function buildPlayers() {
-  const looks = {
-    N: { skin: 0xc68e64, hair: 0x2a1a12, style: 'cap', pose: 'chin', vest: true },
-    E: { skin: 0x8d5a3b, hair: 0x15100c, style: 'fedora', pose: 'drink' },
-    W: { skin: 0xe0b48f, hair: 0x3a2416, style: 'bun', pose: 'cig', glasses: true }
-  };
+  const makers = { N: makeTiao, E: makeMarreta, W: makeNeide };
+  const smokeTex = canvasTex(64, 64, (g, W) => { const rg = g.createRadialGradient(W / 2, W / 2, 0, W / 2, W / 2, W / 2); rg.addColorStop(0, 'rgba(255,255,255,.9)'); rg.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = rg; g.fillRect(0, 0, W, W); });
+  V.chairs = {}; V.midSmoke = [];
   for (const pos of ['N', 'E', 'W']) {
-    const p = makePlayer(looks[pos]);
-    p.position.set(PL[pos].x, .35, PL[pos].z); p.scale.setScalar(1.18);
-    p.rotation.order = 'YXZ';
-    p.rotation.y = Math.atan2(-PL[pos].x, -PL[pos].z);
-    V.bgScene.add(p); V.players[pos] = p;
+    const yaw = Math.atan2(-PL[pos].x, -PL[pos].z);
+    const chair = outline(makeChair(), .035); chair.position.set(PL[pos].x, .9, PL[pos].z); chair.scale.setScalar(1.4); chair.rotation.y = yaw;
+    V.midScene.add(chair); V.chairs[pos] = chair;
+    const p = assemble(makers[pos]());
+    p.position.set(PL[pos].x, .1, PL[pos].z); p.scale.setScalar(1.6);
+    p.rotation.order = 'YXZ'; p.rotation.y = yaw;
+    V.midScene.add(p); V.players[pos] = p;
+    if (p.userData.ember) for (let i = 0; i < 6; i++) {
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: smokeTex, color: 0xd9d2c8, transparent: true, opacity: 0, depthWrite: false }));
+      sp.userData = { phase: i / 6, src: p.userData.ember }; V.midScene.add(sp); V.midSmoke.push(sp);
+    }
   }
 }
+
 function updatePlayers() {
   const seats = SEATPOS[G.mode];
   for (const pos of ['N', 'E', 'W']) {
     const p = seats.indexOf(pos), pl = V.players[pos];
     pl.visible = p >= 0;
-    if (p >= 0) pl.userData.shirt.color.setHex(team(p) === 0 ? 0xc9852f : 0xa8443a);
   }
 }
 
@@ -551,7 +768,7 @@ function applyCam(d, top, bottom) {
 function fitCamera() {
   if (!V.ok) return;
   const { top, bottom } = insets(), H = V.H;
-  const pts = [[-7.7, .3, 8.1], [7.7, .3, 8.1], [-7.7, .3, -8.1], [7.7, .3, -8.1], [-5.2, 2.1, 6.25], [5.2, 2.1, 6.25], [0, 4.2, -9.5]].map(p => new THREE.Vector3(...p));
+  const pts = [[-7.7, .3, 8.1], [7.7, .3, 8.1], [-7.7, .3, -8.1], [7.7, .3, -8.1], [-5.2, 2.1, 6.25], [5.2, 2.1, 6.25], [0, 6.3, -9.2]].map(p => new THREE.Vector3(...p));
   const yMin = -1 + 2 * bottom / H + .01, yMax = 1 - 2 * top / H - .01;
   let topEff = top, hi = 140;
   for (let pass = 0; pass < 4; pass++) {
@@ -573,7 +790,7 @@ function fitCamera() {
 function resize3D() {
   if (!V.ok) return;
   V.W = stage.clientWidth; V.H = stage.clientHeight;
-  V.fg.setSize(V.W, V.H, false); V.bg.setSize(V.W, V.H, false);
+  V.fg.setSize(V.W, V.H, false); V.bg.setSize(V.W, V.H, false); V.mid.setSize(V.W, V.H, false);
   fitCamera(); if (V.camGoal) V.camCur = { ...V.camGoal };
 }
 const refit = () => requestAnimationFrame(() => fitCamera());
@@ -623,6 +840,7 @@ function loop(now) {
   }
   animPlayers(now); animSmoke(now); placeOverlays();
   V.fg.render(V.fgScene, V.cam);
+  V.mid.render(V.midScene, V.cam);
   if (!(V.frame++ & 1)) V.bg.render(V.bgScene, V.cam);
 }
 function animPlayers(now) {
@@ -636,8 +854,8 @@ function animPlayers(now) {
     const yaw = Math.atan2(lookAt[0] - PL[pos].x, lookAt[1] - PL[pos].z) - pl.rotation.y;
     const yw = Math.atan2(Math.sin(yaw), Math.cos(yaw));
     u.head.rotation.y += (Math.max(-.7, Math.min(.7, yw)) - u.head.rotation.y) * .05;
-    const lean = turnPos === pos ? .16 : 0;
-    u.head.rotation.x += ((turnPos === pos ? .35 : .12) - u.head.rotation.x) * .05;
+    const lean = turnPos === pos ? .1 : 0;
+    u.head.rotation.x += ((turnPos === pos ? -.12 : -.38) - u.head.rotation.x) * .05;
     pl.rotation.x += (lean - pl.rotation.x) * .05;
   }
 }
@@ -650,7 +868,14 @@ function animSmoke(now) {
     sp.scale.setScalar(.25 + t * 1.3);
     sp.material.opacity = .14 * Math.sin(Math.PI * t);
   }
+  for (const sp of V.midSmoke || []) {
+    const t = ((now / 3800) + sp.userData.phase) % 1;
+    sp.userData.src.getWorldPosition(v3s);
+    sp.position.set(v3s.x + Math.sin(t * 5 + sp.userData.phase * 7) * .3 * t, v3s.y + .1 + t * 2.4, v3s.z + Math.cos(t * 3) * .2 * t);
+    sp.scale.setScalar(.2 + t * 1.1); sp.material.opacity = .2 * Math.sin(Math.PI * t);
+  }
 }
+const v3s = new THREE.Vector3();
 
 /* ---------- Etiquetas e balões presos à cena ---------- */
 const v3 = new THREE.Vector3();
@@ -722,7 +947,8 @@ function popFor(ev) {
   const whyRow = (tags) => `<div class="p-row">${tags}<button class="why-btn" data-why>Por quê?</button></div>`;
   switch (ev.type) {
     case 'start':
-      return prof(`Rodada ${G.handNo}`, `${nameOf(ev.p)} começa`, `<div class="p-why">${ev.why}</div>` + (teach ? `<div class="p-row"><span class="tag">Dica</span><span class="p-why">${TIPS[(G.handNo - 1) % TIPS.length]}</span></div>` : ''));
+      const intro = G.handNo === 1 ? `<div class="p-why">${G.n === 4 ? 'Na mesa: <b>Seu Tião</b> é seu parceiro. <b>Marreta</b> e <b>Dona Neide</b> jogam contra.' : 'Seu rival hoje: <b>Seu Tião</b>, 40 anos de mesa.'}</div>` : '';
+      return prof(`Rodada ${G.handNo}`, `${nameOf(ev.p)} começa`, intro + `<div class="p-why">${ev.why}</div>` + (teach ? `<div class="p-row"><span class="tag">Dica</span><span class="p-why">${TIPS[(G.handNo - 1) % TIPS.length]}</span></div>` : ''));
     case 'await': {
       let body = `<div class="p-why">${G.sel ? 'Essa pedra serve nas duas pontas. Onde jogar?' : G.await.forced ? 'Toque na carroça para abrir a mesa.' : 'Toque numa pedra que brilha.'}</div>`;
       if (G.sel) body += `<div class="choice">${G.await.evals.filter(e => e.m.t === G.sel).map((e, i) => `<button data-o="${i}">No ${e.m.side === 'L' ? G.L : G.R} (${e.m.side === 'L' ? 'esquerda' : 'direita'})</button>`).join('')}</div>`;
@@ -733,7 +959,8 @@ function popFor(ev) {
       let tip = '';
       if (teach && G.n === 4 && ev.p !== 0 && team(ev.p) === 0) tip = `Parceiro sem ${list(ev.ends)}: evite essas pontas.`;
       else if (teach && team(ev.p) !== 0) tip = `Anote: ${list(ev.ends)} na ponta trava ${nameOf(ev.p)}.`;
-      return say(ev.p, 'Passo!', `Não tenho ${endsTxt(ev.ends)}.`, tip ? `<div class="p-row"><span class="tag">Leitura</span><span class="p-why">${tip}</span></div>` : '');
+      const ch = CHARS[nameOf(ev.p)], line = ch ? ch.pass[(G.handNo + ev.p + G.board.length) % ch.pass.length] : 'Passo!';
+      return say(ev.p, line, `Não tenho ${endsTxt(ev.ends)}.`, tip ? `<div class="p-row"><span class="tag">Leitura</span><span class="p-why">${tip}</span></div>` : '');
     }
     case 'draw':
       return say(ev.p, `Comprei ${ev.drawn} ${ev.drawn > 1 ? 'pedras' : 'pedra'}`, `Estava sem ${endsTxt(ev.ends)}. Restam ${ev.left} no dorme.`,
@@ -872,8 +1099,8 @@ function pickMode(play) {
   const intro = { solo: 'Você joga contra o computador. Use Dica quando travar.', train: 'O professor joga a sua mão e explica cada lance, com pausa para você ler. Pausar segura a jogada na tela.', watch: 'Partida corrida: o professor joga por todos com explicações rápidas.' }[play];
   sheet(`<h3>${PLAY_NAME[play]}</h3><p>${intro}</p>
     <div class="mode-pick">
-      <button class="mode-card" data-mode="1x1"><div class="mc-num">1<span>×</span>1</div><div><h5>Mano a mano</h5><p>Contra um rival. 14 pedras no dorme: sem jogada, compra até encaixar.</p></div></button>
-      <button class="mode-card" data-mode="2x2"><div class="mc-num">2<span>×</span>2</div><div><h5>Duplas</h5><p>Você e Norte contra Leste e Oeste. Sem compra e sem conversa: só a jogada comunica.</p></div></button>
+      <button class="mode-card" data-mode="1x1"><div class="mc-num">1<span>×</span>1</div><div><h5>Mano a mano</h5><p>Contra o Seu Tião. 14 pedras no dorme: sem jogada, compra até encaixar.</p></div></button>
+      <button class="mode-card" data-mode="2x2"><div class="mc-num">2<span>×</span>2</div><div><h5>Duplas</h5><p>Você e o Seu Tião contra Marreta e Dona Neide. Sem compra e sem conversa: só a jogada comunica.</p></div></button>
     </div>
     <button class="linkbtn" data-close>Voltar</button>`);
   document.querySelectorAll('.mode-card').forEach(b => b.addEventListener('click', () => startGame(b.dataset.mode, play)));
@@ -920,6 +1147,8 @@ function showCredits() {
       <p>Criado por</p>
       <div class="by">Henrique Ruher</div>
     </div>
+    <h4>A turma da mesa</h4>
+    <ul>${Object.values(CHARS).map(c => `<li><strong>${c.full}:</strong> ${c.bio}</li>`).join('')}</ul>
     <h4>Sobre</h4>
     <ul>
       <li>Dominó clássico de 28 pedras, mano a mano e em duplas.</li>
@@ -962,10 +1191,11 @@ function showResult() {
   if (!G.result) return;
   const r = G.result, T = TEAMS[G.mode];
   const title = r.kind === 'bateu' ? `${nameOf(r.p)} bateu!` : 'Jogo trancado';
+  const quote = r.kind === 'bateu' && CHARS[nameOf(r.p)] ? `<p><em>“${CHARS[nameOf(r.p)].win}”</em></p>` : '';
   const sub = r.win < 0 ? 'Empate na contagem: ninguém marca.' : `${T[r.win]} ${G.n === 4 ? 'marcam' : 'marca'} ${r.pts} pontos${r.kind === 'trancou' ? ` (menos pontos na mão: ${r.tp[r.win]} contra ${r.tp[1 - r.win]})` : ''}.`;
   const rows = [...Array(G.n).keys()].map(p => `<div class="res-row"><div><strong><span class="dot t${team(p)}"></span> ${nameOf(p)}</strong><div class="tiles">${G.hands[p].map(t => tileSVG(t[0], t[1], { s: 10, v: true })).join('') || '<span class="s-count">sem pedras</span>'}</div></div><span class="s-count">${handPips(G.hands[p])} pts</span></div>`).join('');
   const champ = G.matchOver ? `<p><strong>${T[G.score[0] >= G.score[1] ? 0 : 1]} ${G.n === 4 ? 'vencem' : 'vence'} a partida!</strong></p>` : '';
-  sheet(`<h3>${title}</h3><p>${sub}</p>
+  sheet(`<h3>${title}</h3>${quote}<p>${sub}</p>
     <div class="big-score"><div>${G.score[0]}<small>${T[0]}</small></div><span style="color:var(--ink-faint)">·</span><div>${G.score[1]}<small>${T[1]}</small></div></div>
     ${champ}<div>${rows}</div>
     <button class="primary" id="resNext">${G.matchOver ? 'Nova partida' : 'Próxima rodada'}</button>

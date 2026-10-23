@@ -51,7 +51,8 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px;border-ra
 /* ---------- Cena ---------- */
 #stage{position:fixed;inset:0;overflow:hidden;background:radial-gradient(ellipse at 50% 30%,#3a2619,var(--night) 70%)}
 #stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
-#bg3d{filter:blur(3.5px) saturate(1) brightness(.92);transform:scale(1.04)}
+#bg3d{filter:blur(4px) saturate(1) brightness(.92);transform:scale(1.04)}
+#mid3d{filter:blur(.7px)}
 .vignette{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 62%,transparent 42%,rgba(5,3,2,.78))}
 .no3d-msg{position:absolute;inset:auto 20px 45% 20px;text-align:center;color:var(--ink-dim);line-height:1.5}
 
@@ -198,6 +199,7 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px;border-ra
 <body>
 <div id="stage">
   <canvas id="bg3d"></canvas>
+  <canvas id="mid3d"></canvas>
   <canvas id="fg3d"></canvas>
   <div class="vignette"></div>
 </div>

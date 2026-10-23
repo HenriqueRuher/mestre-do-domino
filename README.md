@@ -36,6 +36,14 @@ Cada modo pode ser jogado em:
 - **Mano a mano (1×1):** 7 pedras cada, 14 no dorme. Sem jogada, compra até encaixar.
 - **Duplas (2×2):** você (Sul) e Norte contra Leste e Oeste. Sem compra e sem conversa: só a jogada comunica.
 
+## A turma da mesa
+
+- **Seu Tião** (Norte, seu parceiro nas duplas e seu rival no 1×1): aposentado da estiva, 40 anos de mesa. Boina, bigodão branco e uma paixão por carroças.
+- **Marreta** (Leste): dono de oficina, bate a pedra na mesa com força e odeia passar a vez.
+- **Dona Neide** (Oeste): contadora aposentada, conta cada pedra que sai e nunca esquece um passe.
+
+Personagens em estilo cartum (sombra chapada e contorno de tinta), cada um com suas falas.
+
 ## A mesa
 
 Vista da sua cadeira: sua mão em pé na sua frente, as pedras dos adversários na borda da mesa e os jogadores desfocados ao fundo, num bar com spot de luz sobre a mesa, balcão com garrafas, letreiros neon, copo de cerveja, cinzeiro com cigarro aceso e um bloco com o placar da partida.

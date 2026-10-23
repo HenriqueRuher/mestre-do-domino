@@ -23,8 +23,17 @@ const PIP = {0:[],1:[[.5,.5]],2:[[.27,.27],[.73,.73]],3:[[.27,.27],[.5,.5],[.73,
   6:[[.27,.24],[.27,.5],[.27,.76],[.73,.24],[.73,.5],[.73,.76]]};
 
 /* ================== Estado ================== */
-const SEATS = { '1x1': ['Você', 'Rival'], '2x2': ['Sul', 'Leste', 'Norte', 'Oeste'] };
-const TEAMS = { '1x1': ['Você', 'Rival'], '2x2': ['Nós', 'Eles'] };
+// A turma da mesa: Tião (Norte), Marreta (Leste) e Neide (Oeste). No 1×1, o rival é o Tião.
+const SEATS = { '1x1': ['Você', 'Tião'], '2x2': ['Sul', 'Marreta', 'Tião', 'Neide'] };
+const TEAMS = { '1x1': ['Você', 'Tião'], '2x2': ['Nós', 'Eles'] };
+const CHARS = {
+  'Tião': { full: 'Seu Tião', bio: 'Aposentado da estiva. Joga na mesma mesa há 40 anos e não resiste a uma carroça.',
+            pass: ['Passo, meu filho.', 'Tô seco nessa.', 'Essa eu não tenho.'], win: 'Bati! Quarenta anos de mesa, meu filho.' },
+  'Marreta': { full: 'Marreta', bio: 'Dono de oficina. Bate a pedra na mesa com força e odeia passar a vez.',
+            pass: ['Hmpf. Passo.', 'Passo... por enquanto.', 'Tá de brincadeira. Passo.'], win: 'BATI! Ouviu a pedra cantar?' },
+  'Neide': { full: 'Dona Neide', bio: 'Contadora aposentada. Conta cada pedra que sai e nunca esquece um passe.',
+            pass: ['Passo, querido.', 'Anotado. Passo.', 'Hoje não. Passo.'], win: 'Bati. Eu tinha contado, querido.' }
+};
 const TARGET = 100;
 let G = null;
 
@@ -300,4 +309,4 @@ const TIPS = [
   'Guarde números variados para não ficar sem saída.'
 ];
 
-if (typeof module !== 'undefined') module.exports = { newMatch, newHand, step, userMove, evaluate, getG: () => G };
+if (typeof module !== 'undefined') module.exports = { CHARS, newMatch, newHand, step, userMove, evaluate, getG: () => G };

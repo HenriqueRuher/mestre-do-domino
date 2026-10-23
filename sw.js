@@ -1,5 +1,5 @@
 // Cache para o app funcionar offline depois da primeira visita.
-const CACHE = 'pedra-mestra-v2';
+const CACHE = 'pedra-mestra-v3';
 const FILES = ['./', 'index.html', 'engine.js', 'app.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'vendor/three.module.min.js', 'vendor/addons/geometries/RoundedBoxGeometry.js'];
 
 self.addEventListener('install', e => {
