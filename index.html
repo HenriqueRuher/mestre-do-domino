@@ -1,0 +1,803 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mestre do Dominó</title>
+<meta name="description" content="Aprenda dominó clássico avançado: partidas simuladas 1x1 e em duplas com a explicação de cada jogada.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#1d1511">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: app de uma tela para celular — mesa de madeira com feltro; cabeçalho, adversários, mesa, pontas, sua mão, painel do professor, barra de controles */
+:root{
+  --wood:#1d1511; --wood-2:#2a1e17; --wood-3:#3a2a20;
+  --felt:#173430; --felt-2:#1f4540;
+  --bone:#f2eadb; --bone-edge:#c9bca4; --pip:#1c1714;
+  --back:#6a3426; --back-edge:#8a4a38;
+  --ink:#f4ede1; --ink-dim:#b7a893; --ink-faint:#86786a; --line:rgba(242,234,219,.12);
+  --amber:#e9a640; --amber-soft:rgba(233,166,64,.16);
+  --coral:#e4705a; --coral-soft:rgba(228,112,90,.16);
+  --sage:#86c49f; --sage-soft:rgba(134,196,159,.15);
+  --f-display:'Unbounded','Arial Black',system-ui,sans-serif;
+  --f-body:'Figtree',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--wood);color:var(--ink);font-family:var(--f-body);font-size:15px;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--amber);outline-offset:2px;border-radius:8px}
+.app{height:100%;max-width:520px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column}
+section{min-height:0}
+
+/* ---------- Início ---------- */
+#home{flex:1;overflow-y:auto;padding-block:20px 28px;display:flex;flex-direction:column;gap:18px}
+.hero-chain{display:flex;align-items:center;gap:3px;padding:18px 0 4px;transform:rotate(-4deg);transform-origin:left center}
+.eyebrow{font-family:var(--f-mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--amber);margin:0}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(30px,9vw,42px);line-height:1.02;margin:6px 0 10px;text-wrap:balance;letter-spacing:-.01em}
+.lede{color:var(--ink-dim);margin:0;line-height:1.5;max-width:40ch}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--wood-2);border-radius:14px;padding:4px;gap:4px}
+.seg button{padding:10px 8px;border-radius:10px;font-weight:600;color:var(--ink-dim);display:flex;flex-direction:column;gap:2px;align-items:center}
+.seg button small{font-weight:400;font-size:12px;color:var(--ink-faint)}
+.seg button[aria-checked="true"]{background:var(--bone);color:var(--pip)}
+.seg button[aria-checked="true"] small{color:#6b5f52}
+.mode-card{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center;text-align:left;padding:18px;border-radius:18px;background:linear-gradient(160deg,var(--felt-2),var(--felt));border:1px solid rgba(255,255,255,.06);box-shadow:0 10px 24px rgba(0,0,0,.35)}
+.mode-card:active{transform:scale(.985)}
+.mc-num{font-family:var(--f-display);font-weight:800;font-size:34px;color:var(--bone);letter-spacing:-.02em;line-height:1}
+.mc-num span{color:var(--amber)}
+.mode-card h2{font-family:var(--f-display);font-weight:700;font-size:17px;margin:0 0 4px}
+.mode-card p{margin:0;color:var(--ink-dim);font-size:13.5px;line-height:1.45}
+.linkbtn{align-self:flex-start;color:var(--amber);font-weight:600;padding:6px 0;text-decoration:underline;text-underline-offset:3px}
+.home-foot{font-size:12.5px;color:var(--ink-faint);line-height:1.5;margin:0}
+
+/* ---------- Jogo ---------- */
+#game{flex:1;display:flex;flex-direction:column;gap:8px;padding-block:8px 10px}
+.g-head{display:flex;align-items:center;gap:10px}
+.iconbtn{width:38px;height:38px;border-radius:12px;background:var(--wood-2);display:grid;place-items:center;flex:none}
+.g-title{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.15}
+.g-title b{font-family:var(--f-display);font-size:14px;font-weight:700}
+.g-title span{font-size:12px;color:var(--ink-dim)}
+.score{display:flex;align-items:center;gap:6px;font-family:var(--f-mono);font-weight:600;font-variant-numeric:tabular-nums;background:var(--wood-2);padding:6px 10px;border-radius:12px;font-size:14px}
+.score i{font-style:normal;font-family:var(--f-body);font-size:11px;color:var(--ink-dim);font-weight:500}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+.t0 .dot,.dot.t0{background:var(--amber)} .t1 .dot,.dot.t1{background:var(--coral)}
+
+#seats{display:flex;flex-direction:column;gap:5px}
+.seat{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:12px;background:var(--wood-2);border:1px solid transparent;min-height:36px;flex-wrap:wrap}
+.seat.turn{border-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--wood-2) 70%)}
+.s-name{font-weight:600;font-size:13.5px;display:flex;align-items:center;gap:6px}
+.s-count{font-family:var(--f-mono);font-size:12px;color:var(--ink-dim)}
+.s-tiles{display:flex;gap:2px;margin-left:auto;flex-wrap:wrap;justify-content:flex-end}
+.lack{font-size:11px;color:var(--coral);background:var(--coral-soft);border-radius:999px;padding:2px 7px;font-weight:600;white-space:nowrap}
+
+.table{flex:1;min-height:110px;border-radius:18px;background:radial-gradient(ellipse at 50% 40%,var(--felt-2),var(--felt) 75%);box-shadow:inset 0 0 0 6px var(--wood-3),inset 0 0 30px rgba(0,0,0,.45);overflow-y:auto;padding:14px 12px;display:flex}
+#board{display:flex;flex-wrap:wrap;align-items:center;align-content:center;justify-content:center;gap:3px 2px;width:100%;margin:auto}
+.empty-board{color:rgba(242,234,219,.45);font-size:13px;text-align:center;line-height:1.5;max-width:28ch}
+.tile{display:block;flex:none;filter:drop-shadow(0 1.5px 1.5px rgba(0,0,0,.45))}
+.tf{fill:var(--bone);stroke:var(--bone-edge);stroke-width:1}
+.tp{fill:var(--pip)}
+.tl{stroke:var(--bone-edge);stroke-width:1.2}
+.tk{fill:var(--back);stroke:var(--back-edge);stroke-width:1}
+.tkd{fill:var(--back-edge)}
+.tile.end .tf{stroke:var(--amber);stroke-width:2}
+.tile.new{animation:pop .35s ease-out}
+.tile.new .tf{fill:#fff6e0;stroke:var(--amber);stroke-width:2.4}
+@keyframes pop{from{transform:scale(.55) rotate(-8deg);opacity:0}}
+
+.ends{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px}
+.endv{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-dim)}
+.endv.r{justify-content:flex-end}
+.endv b{font-family:var(--f-display);font-size:20px;color:var(--bone);font-weight:700}
+.mid{font-size:12px;color:var(--ink-dim);text-align:center;font-family:var(--f-mono)}
+.mid strong{color:var(--ink);font-weight:600}
+
+.me{background:var(--wood-2);border-radius:14px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+.me.turn{box-shadow:0 0 0 1.5px var(--amber)}
+.me-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hand{display:flex;gap:5px;overflow-x:auto;padding:2px 2px 4px;scrollbar-width:thin}
+.hand button{padding:0;border-radius:6px;flex:none;transition:transform .15s}
+.hand button.dim{opacity:.35}
+.hand button.ok{transform:translateY(-4px)}
+.hand button.ok .tf{stroke:var(--sage);stroke-width:2.2}
+.hand button.sel{transform:translateY(-8px)}
+.hand button.sel .tf{stroke:var(--amber);stroke-width:2.6}
+
+.coach{background:var(--bone);color:var(--pip);border-radius:16px;padding:12px 14px;max-height:34vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px;font-size:14px;line-height:1.45}
+.coach .tf{stroke:#a99c84}
+.c-label{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#8a6a2c;display:flex;align-items:center;gap:8px}
+.c-head{font-weight:700;font-size:15px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.c-head svg{display:inline-block;vertical-align:middle}
+.tags{display:flex;gap:5px;flex-wrap:wrap}
+.tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:#e6dac4;color:#5c4a33;letter-spacing:.02em}
+.reasons{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.reasons li{padding-left:14px;position:relative}
+.reasons li::before{content:"";position:absolute;left:0;top:.55em;width:7px;height:7px;border-radius:50%;background:#3d8a5e}
+.reasons li.neg::before{background:#c2533d}
+.reasons li.info::before{background:#b07c1e}
+.verdict{padding:8px 10px;border-radius:10px;font-weight:600}
+.verdict.good{background:#d9ecdf;color:#1f5a38}
+.verdict.mid{background:#f3e3c2;color:#6a4a10}
+.verdict.bad{background:#f4d7cf;color:#7a2a1a}
+.alts{border-top:1px dashed #cdbfa6;padding-top:8px;display:flex;flex-direction:column;gap:6px}
+.alt-h{font-size:12px;font-weight:700;color:#6b5f52}
+.alt{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;font-size:13px}
+.alt .why{color:#5e5245;min-width:0}
+.alt .grade{font-family:var(--f-mono);font-weight:600;font-size:12px;color:#6b5f52;font-variant-numeric:tabular-nums}
+.foot{font-size:12px;color:#7a6d5e;margin:0}
+.choice{display:flex;gap:8px;flex-wrap:wrap}
+.choice button{background:var(--pip);color:var(--bone);padding:9px 12px;border-radius:10px;font-weight:600;font-size:13.5px}
+
+.controls{display:grid;grid-template-columns:auto auto auto 1fr;gap:6px}
+.ctl{background:var(--wood-2);border-radius:12px;padding:0 12px;height:46px;font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px;color:var(--ink-dim)}
+.ctl[aria-pressed="true"]{color:var(--pip);background:var(--amber)}
+.primary{background:var(--amber);color:var(--pip);border-radius:12px;height:46px;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px}
+.primary:disabled{opacity:.4}
+
+/* ---------- Folhas ---------- */
+.sheet-bg{position:fixed;inset:0;background:rgba(10,7,5,.6);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+.sheet{background:var(--wood-2);width:100%;max-width:520px;max-height:88%;overflow-y:auto;border-radius:22px 22px 0 0;padding:18px max(18px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:14px;animation:up .25s ease-out}
+@keyframes up{from{transform:translateY(40px);opacity:0}}
+.sheet h3{font-family:var(--f-display);font-size:19px;margin:0;font-weight:700;text-wrap:balance}
+.sheet h4{font-size:12px;font-family:var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin:6px 0 0}
+.sheet p,.sheet li{color:var(--ink-dim);line-height:1.55;margin:0}
+.sheet ul,.sheet ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.sheet strong{color:var(--ink)}
+.count-grid{display:grid;grid-template-columns:auto 1fr auto;gap:8px 10px;align-items:center}
+.slots{display:flex;gap:3px}
+.slots i{height:14px;flex:1;border-radius:3px;background:var(--wood-3)}
+.slots i.b{background:var(--amber)} .slots i.m{background:var(--sage)}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--ink-dim);flex-wrap:wrap}
+.legend span{display:flex;align-items:center;gap:5px}
+.legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.res-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.res-row .tiles{display:flex;gap:2px;flex-wrap:wrap;margin-top:4px}
+.big-score{display:flex;justify-content:center;gap:18px;font-family:var(--f-display);font-size:30px;font-weight:800;align-items:center}
+.big-score small{display:block;font-family:var(--f-body);font-size:12px;font-weight:500;color:var(--ink-dim);text-align:center}
+.sheet .primary{width:100%}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <section id="home">
+    <div class="hero-chain" id="heroChain" aria-hidden="true"></div>
+    <div>
+      <p class="eyebrow">Escola de dominó clássico</p>
+      <h1>Mestre do Dominó</h1>
+      <p class="lede">Assista partidas simuladas e entenda, pedra por pedra, por que aquela é a melhor jogada. Ou jogue e receba a nota do professor.</p>
+    </div>
+    <div class="seg" role="radiogroup" aria-label="Como usar">
+      <button role="radio" aria-checked="true" data-train="0" id="segWatch">Assistir<small>o professor joga e explica</small></button>
+      <button role="radio" aria-checked="false" data-train="1" id="segTrain">Treinar<small>você joga, ele avalia</small></button>
+    </div>
+    <button class="mode-card" data-mode="1x1" id="card1x1">
+      <div class="mc-num">1<span>×</span>1</div>
+      <div><h2>Mano a mano</h2><p>Você contra um rival. 14 peças ficam no dorme: sem jogada, compra até encaixar.</p></div>
+    </button>
+    <button class="mode-card" data-mode="2x2" id="card2x2">
+      <div class="mc-num">2<span>×</span>2</div>
+      <div><h2>Duplas</h2><p>Sul e Norte contra Leste e Oeste. Todas as peças distribuídas, sem compra. Parceiro não fala: só a jogada comunica.</p></div>
+    </button>
+    <button class="linkbtn" id="btnRules">Regras do clássico e o que o professor observa</button>
+    <p class="home-foot">Partidas até 100 pontos. O professor decide cada jogada só com o que aquele jogador poderia saber: a própria mão, a mesa e quem passou ou comprou.</p>
+  </section>
+
+  <section id="game" hidden>
+    <header class="g-head">
+      <button class="iconbtn" id="btnBack" aria-label="Voltar ao início"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div class="g-title"><b id="gMode"></b><span id="gHand"></span></div>
+      <div class="score" id="gScore"></div>
+    </header>
+    <div id="seats"></div>
+    <div class="table" id="table"><div id="board"></div></div>
+    <div class="ends" id="ends"></div>
+    <div class="me" id="me"></div>
+    <div class="coach" id="coach" aria-live="polite"></div>
+    <nav class="controls">
+      <button class="ctl" id="btnCount">Contagem</button>
+      <button class="ctl" id="btnReveal" aria-pressed="true">Mãos</button>
+      <button class="ctl" id="btnAuto" aria-pressed="false">Auto</button>
+      <button class="primary" id="btnNext">Próxima jogada</button>
+    </nav>
+  </section>
+</div>
+<div id="sheetRoot"></div>
+
+<script>
+/* ================== Peças ================== */
+const $ = s => document.querySelector(s);
+const ALL = []; for (let a = 0; a <= 6; a++) for (let b = a; b <= 6; b++) ALL.push([a, b]);
+const key = t => Math.min(t[0], t[1]) + '-' + Math.max(t[0], t[1]);
+const pips = t => t[0] + t[1];
+const has = (t, n) => t[0] === n || t[1] === n;
+const isDbl = t => t[0] === t[1];
+const other = (t, n) => t[0] === n ? t[1] : t[0];
+const sum = a => a.reduce((s, x) => s + x, 0);
+const handPips = h => sum(h.map(pips));
+const cmpTile = (x, y) => x[0] - y[0] || x[1] - y[1];
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const fmt = n => n.toFixed(1).replace('.', ',');
+const pct = p => Math.round(p * 100) + '%';
+const list = ns => { ns = [...new Set(ns)].sort(); return ns.length < 2 ? String(ns[0]) : ns.slice(0, -1).join(', ') + ' e ' + ns[ns.length - 1]; };
+
+const PIP = {0:[],1:[[.5,.5]],2:[[.27,.27],[.73,.73]],3:[[.27,.27],[.5,.5],[.73,.73]],
+  4:[[.27,.27],[.73,.27],[.27,.73],[.73,.73]],5:[[.27,.27],[.73,.27],[.27,.73],[.73,.73],[.5,.5]],
+  6:[[.27,.24],[.27,.5],[.27,.76],[.73,.24],[.73,.5],[.73,.76]]};
+
+function tileSVG(a, b, o = {}) {
+  const s = o.s || 20, v = !!o.v, w = v ? s : 2 * s, h = v ? 2 * s : s, r = s * .16, cls = o.cls || '';
+  if (o.back) return `<svg class="tile ${cls}" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><rect class="tk" x=".5" y=".5" width="${w - 1}" height="${h - 1}" rx="${r}"/><circle class="tkd" cx="${w / 2}" cy="${h / 2}" r="${s * .13}"/></svg>`;
+  let g = '';
+  const half = (n, ox, oy) => { for (const [x, y] of PIP[n]) { const px = v ? x : y, py = v ? y : x; g += `<circle class="tp" cx="${(ox + px * s).toFixed(2)}" cy="${(oy + py * s).toFixed(2)}" r="${(s * .095).toFixed(2)}"/>`; } };
+  half(a, 0, 0); half(b, v ? 0 : s, v ? s : 0);
+  const line = v ? `<line class="tl" x1="${s * .2}" y1="${s}" x2="${s * .8}" y2="${s}"/>` : `<line class="tl" x1="${s}" y1="${s * .2}" x2="${s}" y2="${s * .8}"/>`;
+  return `<svg class="tile ${cls}" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${a} e ${b}"><rect class="tf" x=".75" y=".75" width="${w - 1.5}" height="${h - 1.5}" rx="${r}"/>${line}${g}</svg>`;
+}
+const mini = (t, s = 11) => tileSVG(t[0], t[1], { s });
+function face(n, s = 22) { // meia peça para mostrar o número da ponta
+  let g = ''; for (const [x, y] of PIP[n]) g += `<circle class="tp" cx="${x * s}" cy="${y * s}" r="${s * .095}"/>`;
+  return `<svg class="tile" width="${s}" height="${s}" viewBox="0 0 ${s} ${s}" aria-hidden="true"><rect class="tf" x=".75" y=".75" width="${s - 1.5}" height="${s - 1.5}" rx="${s * .18}"/>${g}</svg>`;
+}
+
+/* ================== Estado ================== */
+const SEATS = {
+  '1x1': ['Você', 'Rival'],
+  '2x2': ['Sul', 'Leste', 'Norte', 'Oeste']
+};
+const TEAMS = { '1x1': ['Você', 'Rival'], '2x2': ['Nós', 'Eles'] };
+const TARGET = 100;
+let G = null;
+let homeTrain = false;
+let autoTimer = null;
+
+const nameOf = p => SEATS[G.mode][p];
+const team = p => G.n === 4 ? p % 2 : p;
+
+function newMatch(mode, train) {
+  G = { mode, n: mode === '1x1' ? 2 : 4, train, reveal: !train, score: [0, 0], handNo: 0, starter: null, first: true, stats: { asked: 0, best: 0, sumGrade: 0 } };
+  newHand();
+}
+
+function newHand() {
+  const deck = shuffle(ALL.map(t => [...t]));
+  G.hands = []; for (let p = 0; p < G.n; p++) G.hands.push(deck.splice(0, 7).sort(cmpTile));
+  G.bone = deck;
+  G.board = []; G.L = null; G.R = null; G.over = false; G.matchOver = false; G.result = null; G.await = null; G.sel = null;
+  G.handNo++;
+  G.know = { lacks: [...Array(G.n)].map(() => new Set()), exposed: [...Array(G.n)].map(() => ({})), opener: { L: null, R: null } };
+  G.lastPlaced = null; G.forced = null;
+  let why;
+  if (G.first) {
+    let best = null, holder = 0;
+    for (let p = 0; p < G.n; p++) for (const t of G.hands[p]) {
+      const score = (isDbl(t) ? 100 : 0) + pips(t);
+      if (!best || score > best.score) { best = { t, score }; holder = p; }
+    }
+    G.turn = holder; G.forced = best.t;
+    why = isDbl(best.t) ? (best.t[0] === 6 ? 'tem a carroça de 6 e abre a mesa (regra da primeira rodada).' : `tem a maior carroça (${best.t[0]}|${best.t[0]}) e abre a mesa. A de 6 ficou no dorme.`) : 'tem a peça mais pesada e abre a mesa, já que ninguém tem carroça.';
+  } else {
+    G.turn = G.starter;
+    why = 'venceu a rodada anterior e sai com a peça que quiser.';
+  }
+  G.lastEv = { type: 'start', p: G.turn, why };
+}
+
+/* ================== Regras ================== */
+function legal(hand) {
+  if (!G.board.length) return hand.map(t => ({ t, side: 'L' }));
+  const out = [];
+  for (const t of hand) {
+    if (has(t, G.L)) out.push({ t, side: 'L' });
+    if (has(t, G.R) && G.L !== G.R) out.push({ t, side: 'R' });
+  }
+  return out;
+}
+
+function play(p, m) {
+  const hand = G.hands[p], t = m.t;
+  hand.splice(hand.indexOf(t), 1);
+  const ex = G.know.exposed[p];
+  if (!G.board.length) {
+    G.board.push({ a: t[0], b: t[1] }); G.L = t[0]; G.R = t[1];
+    G.know.opener.L = p; G.know.opener.R = p;
+    ex[t[0]] = (ex[t[0]] || 0) + 1; if (!isDbl(t)) ex[t[1]] = (ex[t[1]] || 0) + 1;
+  } else if (m.side === 'L') {
+    const o = other(t, G.L); G.board.unshift({ a: o, b: G.L }); G.L = o; G.know.opener.L = p; ex[o] = (ex[o] || 0) + 1;
+  } else {
+    const o = other(t, G.R); G.board.push({ a: G.R, b: o }); G.R = o; G.know.opener.R = p; ex[o] = (ex[o] || 0) + 1;
+  }
+  G.lastPlaced = m.side === 'L' && G.board.length > 1 ? 0 : G.board.length - 1;
+  G.forced = null;
+  if (!hand.length) return endHand('bateu', p);
+  if (locked()) return endHand('trancou', p);
+  G.turn = (p + 1) % G.n;
+}
+
+function locked() { // verdade do jogo: nenhuma peça fora da mesa encaixa
+  const pool = [...G.hands.flat(), ...G.bone];
+  return !pool.some(t => has(t, G.L) || has(t, G.R));
+}
+
+function endHand(kind, p) {
+  const tp = [0, 0];
+  for (let q = 0; q < G.n; q++) tp[team(q)] += handPips(G.hands[q]);
+  let win;
+  if (kind === 'bateu') win = team(p);
+  else win = tp[0] < tp[1] ? 0 : tp[1] < tp[0] ? 1 : -1;
+  const pts = win >= 0 ? tp[1 - win] : 0;
+  if (win >= 0) G.score[win] += pts;
+  if (kind === 'bateu') G.starter = p;
+  else if (win >= 0) {
+    let bestQ = null; for (let q = 0; q < G.n; q++) if (team(q) === win && (bestQ === null || handPips(G.hands[q]) < handPips(G.hands[bestQ]))) bestQ = q;
+    G.starter = bestQ;
+  } else G.starter = ((G.starter ?? p) + 1) % G.n;
+  G.first = false; G.over = true;
+  G.matchOver = G.score.some(s => s >= TARGET);
+  G.result = { kind, p, win, pts, tp };
+}
+
+/* ================== O professor ================== */
+// Probabilidade de o jogador o NÃO ter peça para as pontas, vista por quem está decidindo.
+function pNoPlay(o, nl, nr, unknown) {
+  const lacks = [...G.know.lacks[o]];
+  const pool = unknown.filter(x => !lacks.some(n => has(x, n)));
+  const C = pool.length, M = pool.filter(x => has(x, nl) || has(x, nr)).length;
+  const h = Math.min(G.hands[o].length, C);
+  let pr = 1;
+  for (let i = 0; i < h; i++) { pr *= (C - M - i) / (C - i); if (pr <= 0) return 0; }
+  return pr;
+}
+
+function evaluate(p, moves) {
+  const hand = G.hands[p];
+  const onBoard = new Set(G.board.map(b => key([b.a, b.b])));
+  const mine = new Set(hand.map(key));
+  const unknown = ALL.filter(t => !onBoard.has(key(t)) && !mine.has(key(t)));
+  const seen = n => ALL.filter(t => has(t, n) && (onBoard.has(key(t)) || mine.has(key(t)))).length;
+  const opps = G.n === 2 ? [{ o: 1 - p, w: 1 }] : [{ o: (p + 1) % 4, w: 1 }, { o: (p + 3) % 4, w: .5 }];
+  const partner = G.n === 4 ? (p + 2) % 4 : null;
+  const avgUnknown = unknown.length ? handPips(unknown) / unknown.length : 0;
+
+  const res = moves.map(m => {
+    const t = m.t, rest = hand.filter(x => x !== t);
+    let nl, nr;
+    if (!G.board.length) { nl = t[0]; nr = t[1]; }
+    else if (m.side === 'L') { nl = other(t, G.L); nr = G.R; }
+    else { nl = G.L; nr = other(t, G.R); }
+    const newEnd = m.side === 'L' ? nl : nr;
+    const f = {}, d = {};
+    if (!rest.length) f.win = 1000;
+    f.peso = pips(t) * .45;
+    if (isDbl(t)) { const s = seen(t[0]); f.carroca = 2.5 + .45 * s; d.carroca = { n: t[0], s }; }
+    const k = rest.filter(x => has(x, nl) || has(x, nr)).length;
+    if (rest.length) { f.controle = k === 0 ? -3.5 : 1.1 * Math.min(k, 4); d.controle = { k, nl, nr }; }
+    const distinct = new Set(rest.flat()).size;
+    f.variedade = .35 * distinct; d.variedade = distinct;
+    let blk = 0; d.bloqueio = [];
+    for (const { o, w } of opps) {
+      const pr = pNoPlay(o, nl, nr, unknown); blk += 7 * w * pr;
+      d.bloqueio.push({ o, w, pr, lack: [...G.know.lacks[o]].filter(x => x === nl || x === nr) });
+    }
+    f.bloqueio = blk;
+    if (partner !== null) {
+      const pr = pNoPlay(partner, nl, nr, unknown);
+      let v = -4 * pr;
+      const likes = G.know.exposed[partner][newEnd] || 0;
+      const likeOk = G.board.length && likes;
+      if (likeOk) v += 1.3 * Math.min(likes, 2);
+      f.parceiro = v;
+      d.parceiro = { pr, like: likeOk ? newEnd : null, lack: [...G.know.lacks[partner]].filter(x => x === nl || x === nr) };
+    }
+    if (G.board.length && !isDbl(t)) {
+      const op = G.know.opener[m.side];
+      if (op !== null && op !== p && team(op) !== team(p)) { f.cortar = 1.2; d.cortar = { o: op, n: m.side === 'L' ? G.L : G.R }; }
+    }
+    const boardAfter = new Set(onBoard); boardAfter.add(key(t));
+    const locks = rest.length && ALL.every(x => boardAfter.has(key(x)) || !(has(x, nl) || has(x, nr)));
+    if (locks) {
+      let my = handPips(rest), est;
+      if (G.n === 2) est = avgUnknown * G.hands[1 - p].length;
+      else { my += avgUnknown * G.hands[partner].length; est = avgUnknown * (G.hands[(p + 1) % 4].length + G.hands[(p + 3) % 4].length); }
+      f.tranca = my < est ? 12 : -12; d.tranca = { my: Math.round(my), est: Math.round(est) };
+    }
+    return { m, nl, nr, f, d, rest, total: sum(Object.values(f)) };
+  });
+  res.sort((a, b) => b.total - a.total || pips(b.m.t) - pips(a.m.t));
+  return res;
+}
+
+const FL = { win: 'bater', peso: 'livrar peso', carroca: 'jogar a carroça', controle: 'controle das pontas', variedade: 'variedade na mão', bloqueio: 'bloqueio do adversário', parceiro: 'cuidado com o parceiro', cortar: 'fechar a ponta do rival', tranca: 'trancar o jogo' };
+const TAG = { win: 'Batida', peso: 'Peso', carroca: 'Carroça', controle: 'Controle', variedade: 'Variedade', bloqueio: 'Bloqueio', parceiro: 'Parceria', cortar: 'Leitura', tranca: 'Tranca' };
+
+function reasonsFor(e, p) {
+  const out = [], f = e.f, d = e.d;
+  const draws = G.n === 2;
+  if (f.win) out.push({ w: 999, cls: 'pos', tag: 'win', txt: 'Bate: é a última peça da mão e a rodada acaba aqui.' });
+  if (f.tranca) out.push({ w: Math.abs(f.tranca), cls: f.tranca > 0 ? 'pos' : 'neg', tag: 'tranca',
+    txt: f.tranca > 0 ? `Tranca o jogo: nenhuma peça que sobrou encaixa nas pontas ${e.nl} e ${e.nr}. Seu lado soma ${d.tranca.my} pontos contra cerca de ${d.tranca.est} do outro, então vence a contagem.`
+                      : `Trancaria o jogo com o seu lado mais pesado (${d.tranca.my} contra cerca de ${d.tranca.est}). Perderia a contagem.` });
+  for (const b of d.bloqueio || []) {
+    const c = 7 * b.w * b.pr; if (c < 1.2) continue;
+    const who = nameOf(b.o), fail = draws ? 'ter que comprar no dorme' : 'passar a vez';
+    out.push({ w: c, cls: 'pos', tag: 'bloqueio', txt: b.lack.length
+      ? `${who} já mostrou que não tem ${list(b.lack)} (passou ou comprou nesse número). Deixar ${list(b.lack)} na ponta dá ${pct(b.pr)} de chance de ${who} ${fail}.`
+      : `Pela contagem das peças, ${who} tem ${pct(b.pr)} de chance de não ter ${e.nl === e.nr ? e.nl : e.nl + ' nem ' + e.nr} e ${fail}.` });
+  }
+  if (d.carroca) out.push({ w: f.carroca, cls: 'pos', tag: 'carroca', txt: `Carroça de ${d.carroca.n} só entra numa ponta ${d.carroca.n}. Já há ${d.carroca.s} das 7 peças com ${d.carroca.n} na mesa ou na mão. Segurar carroça é risco de ficar com ela.` });
+  if (d.controle) {
+    const { k, nl, nr } = d.controle, ends = nl === nr ? `no ${nl}` : `no ${nl} ou no ${nr}`;
+    if (k >= 2) out.push({ w: f.controle, cls: 'pos', tag: 'controle', txt: `Ficam ${k} peças na mão que encaixam ${ends}. Você continua com o controle das pontas.` });
+    else if (k === 0) out.push({ w: 3.5, cls: 'neg', tag: 'controle', txt: `Depois dela, nenhuma peça sua encaixa ${ends}. Você passa a depender dos outros.` });
+  }
+  if (f.peso >= 3.6) out.push({ w: f.peso, cls: 'pos', tag: 'peso', txt: `Livra ${pips(e.m.t)} pontos da mão. Se a rodada trancar ou o rival bater, peça pesada conta contra você.` });
+  if (d.parceiro) {
+    const pp = nameOf((p + 2) % 4), dp = d.parceiro;
+    if (dp.like) out.push({ w: 1.3, cls: 'pos', tag: 'parceiro', txt: `Deixa o ${dp.like} na ponta, número que ${pp} vem abrindo. Quem abre um número costuma ter mais dele.` });
+    if (dp.lack.length) out.push({ w: 4 * dp.pr, cls: 'neg', tag: 'parceiro', txt: `Custo: ${pp} já passou no ${list(dp.lack)}. Essa ponta pode travar o parceiro.` });
+    else if (dp.pr >= .3) out.push({ w: 4 * dp.pr, cls: 'neg', tag: 'parceiro', txt: `Custo: ${pct(dp.pr)} de chance de ${pp} também ficar sem jogada nessas pontas.` });
+  }
+  if (d.cortar) out.push({ w: 1.2, cls: 'pos', tag: 'cortar', txt: `Fecha o ${d.cortar.n} que ${nameOf(d.cortar.o)} abriu. Quem abre um número geralmente quer que ele volte.` });
+  out.sort((a, b) => b.w - a.w);
+  if (!out.length) out.push({ w: 0, cls: 'info', tag: 'variedade', txt: `Jogada de equilíbrio: mantém ${d.variedade} números diferentes na mão para não ficar sem saída.` });
+  return out.slice(0, 4);
+}
+
+function altReason(best, alt) {
+  let worst = null, gap = 0;
+  for (const k of new Set([...Object.keys(best.f), ...Object.keys(alt.f)])) {
+    const g = (best.f[k] || 0) - (alt.f[k] || 0);
+    if (g > gap) { gap = g; worst = k; }
+  }
+  if (alt.f.tranca < 0) return 'trancaria o jogo perdendo a contagem';
+  if (alt.d.controle && alt.d.controle.k === 0) return 'você ficaria sem peça para as pontas';
+  return worst ? 'perde em ' + FL[worst] : 'praticamente equivalente';
+}
+const grade = (best, e) => Math.max(0, 10 - (best.total - e.total) * .8);
+
+/* ================== Passo a passo ================== */
+function step() {
+  if (G.over || G.await) return;
+  const p = G.turn, hand = G.hands[p];
+  let moves = legal(hand);
+  const forced = !!G.forced;
+  if (forced) moves = moves.filter(m => key(m.t) === key(G.forced));
+  if (!moves.length) {
+    if (G.n === 2 && G.bone.length) {
+      G.know.lacks[p] = new Set([G.L, G.R]);
+      let drawn = 0;
+      while (G.bone.length) { const t = G.bone.pop(); hand.push(t); drawn++; if (has(t, G.L) || has(t, G.R)) break; }
+      hand.sort(cmpTile);
+      G.lastEv = { type: 'draw', p, drawn, ends: [G.L, G.R], left: G.bone.length };
+      return;
+    }
+    G.know.lacks[p].add(G.L); G.know.lacks[p].add(G.R);
+    G.lastEv = { type: 'pass', p, ends: [G.L, G.R] };
+    G.turn = (p + 1) % G.n;
+    return;
+  }
+  const evals = evaluate(p, moves);
+  if (G.train && p === 0 && !forced && moves.length > 1) {
+    G.await = { evals }; G.sel = null;
+    G.lastEv = { type: 'await' };
+    return;
+  }
+  const chosen = evals[0];
+  play(p, chosen.m);
+  G.lastEv = { type: 'play', p, chosen, evals, forced, only: moves.length === 1 };
+}
+
+function userPlay(m) {
+  const evals = G.await.evals;
+  const chosen = evals.find(e => e.m.t === m.t && e.m.side === m.side);
+  const rank = evals.indexOf(chosen);
+  const g = grade(evals[0], chosen);
+  G.stats.asked++; G.stats.sumGrade += g; if (rank === 0 || g >= 9.95) G.stats.best++;
+  G.await = null; G.sel = null;
+  play(0, chosen.m);
+  G.lastEv = { type: 'play', p: 0, chosen, evals, user: true, rank, g };
+  render();
+  if (G.over) setTimeout(showResult, 700);
+}
+
+/* ================== Tela ================== */
+function render() {
+  if (!G) return;
+  $('#gMode').textContent = G.mode === '1x1' ? 'Mano a mano' : 'Duplas';
+  $('#gHand').textContent = `Rodada ${G.handNo} · ${G.train ? 'treino' : 'assistindo'} · até ${TARGET}`;
+  const T = TEAMS[G.mode];
+  $('#gScore').innerHTML = `<span class="dot t0"></span><i>${T[0]}</i>${G.score[0]}<i>·</i>${G.score[1]}<i>${T[1]}</i><span class="dot t1"></span>`;
+  $('#btnReveal').setAttribute('aria-pressed', G.reveal);
+  renderSeats(); renderBoard(); renderEnds(); renderMe(); renderCoach(); renderNext();
+}
+
+function lackChips(p) {
+  const l = [...G.know.lacks[p]].sort();
+  return l.length ? `<span class="lack">sem ${l.join(' · ')}</span>` : '';
+}
+
+function renderSeats() {
+  const order = G.n === 2 ? [1] : [2, 3, 1];
+  $('#seats').innerHTML = order.map(p => {
+    const h = G.hands[p], showFace = G.reveal || G.over;
+    const tiles = h.map(t => showFace ? tileSVG(t[0], t[1], { s: 9, v: true }) : tileSVG(0, 0, { s: 9, v: true, back: true })).join('');
+    const role = G.n === 4 ? (p === 2 ? ' · parceiro' : '') : '';
+    return `<div class="seat t${team(p)} ${G.turn === p && !G.over ? 'turn' : ''}">
+      <span class="s-name"><span class="dot"></span>${nameOf(p)}<span class="s-count">${role}</span></span>
+      <span class="s-count">${h.length} pç</span>${lackChips(p)}
+      <div class="s-tiles">${tiles}</div></div>`;
+  }).join('');
+}
+
+function boardSize() {
+  const w = $('#table').clientWidth - 24;
+  return Math.max(15, Math.min(24, Math.floor(w / 15.5)));
+}
+function renderBoard() {
+  const el = $('#board');
+  if (!G.board.length) {
+    el.innerHTML = `<p class="empty-board">${G.lastEv.type === 'start' ? `${nameOf(G.lastEv.p)} ${G.lastEv.why}` : ''}</p>`;
+    return;
+  }
+  const s = boardSize(), last = G.board.length - 1;
+  el.innerHTML = G.board.map((b, i) => {
+    const cls = [i === G.lastPlaced && G.lastEv.type === 'play' ? 'new' : '', (i === 0 || i === last) ? 'end' : ''].join(' ');
+    return tileSVG(b.a, b.b, { s, v: b.a === b.b, cls });
+  }).join('');
+}
+
+function renderEnds() {
+  const has2 = G.board.length;
+  const mid = G.n === 2
+    ? `dorme <strong>${G.bone.length}</strong>`
+    : (G.over ? 'fim da rodada' : `vez de <strong>${nameOf(G.turn)}</strong>`);
+  $('#ends').innerHTML = has2
+    ? `<div class="endv">${face(G.L)}<span>ponta<br>esquerda</span><b>${G.L}</b></div><div class="mid">${mid}</div><div class="endv r"><b>${G.R}</b><span>ponta<br>direita</span>${face(G.R)}</div>`
+    : `<div class="endv">mesa vazia</div><div class="mid">${mid}</div><div></div>`;
+}
+
+function renderMe() {
+  const h = G.hands[0], aw = G.await;
+  const okKeys = aw ? new Set(aw.evals.map(e => key(e.m.t))) : null;
+  const tiles = h.map((t, i) => {
+    let cls = '';
+    if (aw) cls = okKeys.has(key(t)) ? (G.sel === t ? 'sel' : 'ok') : 'dim';
+    return `<button class="${cls}" data-i="${i}" aria-label="Peça ${t[0]} e ${t[1]}" ${aw && !okKeys.has(key(t)) ? 'disabled' : ''}>${tileSVG(t[0], t[1], { s: 24, v: true })}</button>`;
+  }).join('');
+  const me = $('#me');
+  me.className = 'me t0' + (G.turn === 0 && !G.over ? ' turn' : '');
+  me.innerHTML = `<div class="me-top"><span class="s-name"><span class="dot"></span>${G.n === 2 ? 'Você' : 'Sul · você'}</span><span class="s-count">${h.length} pç · ${handPips(h)} pontos</span>${lackChips(0)}</div><div class="hand">${tiles}</div>`;
+  me.querySelectorAll('.hand button').forEach(btn => btn.addEventListener('click', () => pickTile(h[+btn.dataset.i])));
+}
+
+function pickTile(t) {
+  if (!G.await) return;
+  const opts = G.await.evals.filter(e => e.m.t === t);
+  if (!opts.length) return;
+  if (opts.length === 1) return userPlay(opts[0].m);
+  G.sel = t; render();
+}
+
+function sideLabel(ev) {
+  if (G.board.length === 1) return 'para abrir a mesa';
+  return ev.chosen.m.side === 'L' ? 'na ponta esquerda' : 'na ponta direita';
+}
+
+function renderCoach() {
+  const ev = G.lastEv, c = $('#coach');
+  let html = '';
+  if (ev.type === 'start') {
+    html = `<div class="c-label">Rodada ${G.handNo}</div>
+      <div class="c-head">${nameOf(ev.p)} ${ev.why}</div>
+      <ul class="reasons"><li class="info">${TIPS[(G.handNo - 1) % TIPS.length]}</li></ul>
+      <p class="foot">${G.train ? 'Você joga com ' + (G.n === 2 ? 'a sua mão' : 'o Sul') + '. Toque em Próxima jogada para avançar os outros.' : 'Toque em Próxima jogada ou ligue o Auto.'}</p>`;
+  } else if (ev.type === 'await') {
+    const ends = G.board.length ? `Pontas ${G.L} e ${G.R}.` : 'Você abre a mesa.';
+    html = `<div class="c-label">Sua vez</div><div class="c-head">${ends} Escolha uma das peças destacadas.</div>`;
+    if (G.sel) {
+      const opts = G.await.evals.filter(e => e.m.t === G.sel);
+      html += `<p class="foot">Essa peça encaixa nas duas pontas. Onde jogar?</p><div class="choice">${opts.map((e, i) =>
+        `<button data-o="${i}">No ${e.m.side === 'L' ? G.L : G.R} (${e.m.side === 'L' ? 'esquerda' : 'direita'})</button>`).join('')}</div>`;
+    } else html += `<p class="foot">Pense: o que cada um já mostrou que não tem? Quantas peças de cada número ainda faltam sair?</p>`;
+  } else if (ev.type === 'pass') {
+    const p = ev.p, e = list(ev.ends);
+    let lesson;
+    if (G.n === 4 && p !== 0 && team(p) === 0) lesson = `${nameOf(p)} é seu parceiro: evite deixar ${e} nas pontas, senão ele trava de novo.`;
+    else if (G.n === 4 && team(p) === 1) lesson = `Anote: deixar ${e} na ponta tende a fazer ${nameOf(p)} passar de novo. É assim que a dupla aperta o rival.`;
+    else lesson = `Agora todos sabem que ${nameOf(p)} não tem ${e}.`;
+    html = `<div class="c-label">Passe</div><div class="c-head">${nameOf(p)} passou: não tem ${ev.ends[0] === ev.ends[1] ? ev.ends[0] : ev.ends[0] + ' nem ' + ev.ends[1]}.</div>
+      <div class="tags"><span class="tag">Leitura</span></div><ul class="reasons"><li class="info">${lesson}</li></ul>`;
+  } else if (ev.type === 'draw') {
+    const p = ev.p, e = ev.ends[0] === ev.ends[1] ? ev.ends[0] : ev.ends[0] + ' nem ' + ev.ends[1];
+    html = `<div class="c-label">Compra no dorme</div><div class="c-head">${nameOf(p)} não tinha ${e} e comprou ${ev.drawn} ${ev.drawn > 1 ? 'peças' : 'peça'} (restam ${ev.left}).</div>
+      <div class="tags"><span class="tag">Leitura</span><span class="tag">Contagem</span></div>
+      <ul class="reasons"><li class="info">${p === 0 ? 'O rival agora sabe que você estava sem' : 'Informação valiosa: ' + nameOf(p) + ' estava sem'} ${list(ev.ends)}. As peças compradas que não serviram também não têm esses números.</li>
+      <li class="info">Quem compra muito engorda a mão. Se o jogo trancar, isso pesa na contagem.</li></ul>`;
+  } else if (ev.type === 'play') {
+    const p = ev.p, e = ev.chosen, best = ev.evals[0];
+    const t = e.m.t;
+    const rs = ev.forced ? [{ cls: 'info', tag: 'win', txt: G.first || G.handNo === 1 ? 'Abertura obrigatória da primeira rodada: sai a maior carroça.' : 'Abertura obrigatória.' }]
+      : ev.only ? [{ cls: 'info', tag: 'controle', txt: `Era a única peça que encaixava.${e.d.controle && e.d.controle.k === 0 ? ' E depois dela, nada mais encaixa nas pontas.' : ''}` }]
+      : reasonsFor(e, p);
+    const tags = ev.forced || ev.only ? '' : [...new Set(rs.filter(r => r.cls === 'pos').map(r => TAG[r.tag]))].map(x => `<span class="tag">${x}</span>`).join('');
+    html = `<div class="c-label"><span class="dot t${team(p)}"></span>${ev.user ? 'Sua jogada' : 'Por que esta jogada'}</div>
+      <div class="c-head">${nameOf(p)} jogou ${mini(t, 13)} ${sideLabel(ev)}</div>`;
+    if (ev.user) {
+      const cls = ev.rank === 0 || ev.g >= 9.95 ? 'good' : ev.g >= 7 ? 'mid' : 'bad';
+      const msg = cls === 'good' ? `Isso! Era a melhor jogada. Nota ${fmt(10)}.`
+        : `Nota ${fmt(ev.g)}. A melhor era ${mini(best.m.t, 11)} ${G.board.length === 1 ? '' : (best.m.side === 'L' ? 'na esquerda' : 'na direita')}: sua escolha ${altReason(best, e)}.`;
+      html += `<div class="verdict ${cls}">${msg}</div>`;
+      if (cls !== 'good') {
+        html += `<div class="alt-h" style="font-size:12px;font-weight:700;color:#6b5f52">O que a melhor jogada fazia</div><ul class="reasons">${reasonsFor(best, p).map(r => `<li class="${r.cls}">${r.txt}</li>`).join('')}</ul>`;
+      } else html += `<ul class="reasons">${rs.map(r => `<li class="${r.cls}">${r.txt}</li>`).join('')}</ul>`;
+    } else {
+      html += (tags ? `<div class="tags">${tags}</div>` : '') + `<ul class="reasons">${rs.map(r => `<li class="${r.cls}">${r.txt}</li>`).join('')}</ul>`;
+    }
+    const alts = ev.evals.filter(x => x !== e && x !== (ev.user ? best : null)).slice(0, 3);
+    if (!ev.forced && alts.length) {
+      html += `<div class="alts"><div class="alt-h">Outras opções</div>${alts.map(a =>
+        `<div class="alt">${mini(a.m.t, 11)}<span class="why">${G.board.length === 1 ? '' : (a.m.side === 'L' ? 'esq.' : 'dir.') + ' → '}pontas ${a.nl}·${a.nr}: ${altReason(best, a)}</span><span class="grade">${fmt(grade(best, a))}</span></div>`).join('')}</div>`;
+    }
+    if (!ev.forced && !ev.user) html += `<p class="foot">O professor só usou o que ${nameOf(p)} sabia: a própria mão, a mesa e quem passou ou comprou.</p>`;
+  }
+  c.innerHTML = html;
+  c.scrollTop = 0;
+  c.querySelectorAll('.choice button').forEach(b => b.addEventListener('click', () => {
+    const opts = G.await.evals.filter(e => e.m.t === G.sel); userPlay(opts[+b.dataset.o].m);
+  }));
+}
+
+function renderNext() {
+  const b = $('#btnNext');
+  b.disabled = !!G.await;
+  b.textContent = G.matchOver ? 'Nova partida' : G.over ? 'Próxima rodada' : G.await ? 'Sua vez' : 'Próxima jogada';
+}
+
+const TIPS = [
+  'Cada número aparece em 7 peças. Some o que está na mesa e na sua mão: o resto está com os outros' + ' (ou no dorme).',
+  'Passou ou comprou? O jogador acabou de mostrar que não tem nenhum dos dois números das pontas.',
+  'Carroça só tem um jeito de entrar. Livre-se delas cedo, antes que o número dela se esgote.',
+  'Na dupla, o número que seu parceiro abre é o que ele tem de sobra. Devolva esse número a ele.',
+  'Peça pesada na mão é perigo: se o jogo trancar ou o rival bater, ela conta contra você.',
+  'Antes de trancar o jogo, compare: seu lado tem menos pontos na mão que o outro?',
+  'Guarde peças de números variados. Quem tem só dois números fica sem saída rápido.'
+];
+
+/* ================== Folhas ================== */
+function sheet(html) {
+  const root = $('#sheetRoot');
+  root.innerHTML = `<div class="sheet-bg"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
+  const bg = root.firstElementChild;
+  bg.addEventListener('click', e => { if (e.target === bg) closeSheet(); });
+  root.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closeSheet));
+  return root;
+}
+const closeSheet = () => { $('#sheetRoot').innerHTML = ''; };
+
+function showRules() {
+  sheet(`<h3>Dominó clássico</h3>
+  <h4>A mesa</h4>
+  <ul>
+    <li><strong>28 peças</strong>, de 0|0 a 6|6. Cada número aparece em 7 peças. Cada jogador recebe 7.</li>
+    <li><strong>1×1:</strong> as 14 que sobram ficam no <strong>dorme</strong>. Sem peça que encaixe, compre até conseguir jogar. Dorme vazio: passe a vez.</li>
+    <li><strong>2×2:</strong> as 28 peças são distribuídas e parceiros sentam frente a frente. Não há compra: sem jogada, passe. Nada de conversa ou sinais: só a jogada comunica.</li>
+    <li><strong>Saída:</strong> na primeira rodada abre quem tem a carroça de 6 (no 1×1, a maior carroça na mão; sem carroça, a peça mais pesada). Depois, sai quem venceu a rodada anterior, com qualquer peça.</li>
+    <li>Cada peça encaixa pelo número igual numa das duas pontas. A vez segue em roda.</li>
+  </ul>
+  <h4>Pontuação</h4>
+  <ul>
+    <li><strong>Batida:</strong> quem fica sem peças vence a rodada e marca a soma dos pontos das mãos do outro lado (no 2×2, das duas mãos da dupla rival).</li>
+    <li><strong>Jogo trancado:</strong> ninguém consegue jogar. Vence o lado com menos pontos na mão (no 2×2, a soma da dupla) e marca os pontos do lado perdedor. Empate: ninguém marca.</li>
+    <li>Partida até <strong>${TARGET} pontos</strong>.</li>
+  </ul>
+  <h4>O que o professor pesa em cada jogada</h4>
+  <ol>
+    <li><strong>Bloqueio e contagem:</strong> chance de o próximo adversário não ter as novas pontas, calculada com as peças que ainda não apareceram.</li>
+    <li><strong>Leitura:</strong> quem passou ou comprou não tem aqueles números. Deixar esses números na ponta trava o rival.</li>
+    <li><strong>Controle:</strong> continuar com peças que encaixam nas pontas que você mesmo deixou.</li>
+    <li><strong>Carroças:</strong> jogar cedo, porque só entram de um jeito.</li>
+    <li><strong>Peso:</strong> descartar peças pesadas quando não custa controle.</li>
+    <li><strong>Parceria (2×2):</strong> não deixar números em que o parceiro passou, devolver os números que ele abre e fechar os números que o rival abre.</li>
+    <li><strong>Tranca:</strong> trancar o jogo só quando seu lado tem menos pontos.</li>
+  </ol>
+  <button class="primary" data-close>Entendi</button>`);
+}
+
+function showCount() {
+  const onBoard = new Set(G.board.map(b => key([b.a, b.b])));
+  const mine = new Set(G.hands[0].map(key));
+  let rows = '';
+  for (let n = 0; n <= 6; n++) {
+    const ts = ALL.filter(t => has(t, n));
+    const b = ts.filter(t => onBoard.has(key(t))).length, m = ts.filter(t => mine.has(key(t))).length;
+    const slots = [...Array(7)].map((_, i) => `<i class="${i < b ? 'b' : i < b + m ? 'm' : ''}"></i>`).join('');
+    rows += `${face(n, 20)}<div class="slots">${slots}</div><span class="s-count">${7 - b - m} fora</span>`;
+  }
+  const lacks = [...Array(G.n).keys()].map(p => {
+    const l = [...G.know.lacks[p]].sort();
+    return `<li><strong>${nameOf(p)}:</strong> ${l.length ? 'não tem ' + list(l) : 'nada revelado ainda'}</li>`;
+  }).join('');
+  sheet(`<h3>Contagem de pedras</h3>
+    <p>Cada número existe em 7 peças. O que não está na mesa nem na sua mão está com ${G.n === 2 ? 'o rival ou no dorme' : 'os outros três'}.</p>
+    <div class="legend"><span><i style="background:var(--amber)"></i>na mesa</span><span><i style="background:var(--sage)"></i>na sua mão</span><span><i style="background:var(--wood-3)"></i>com os outros</span></div>
+    <div class="count-grid">${rows}</div>
+    <h4>O que cada um já revelou</h4><ul>${lacks}</ul>
+    <button class="primary" data-close>Voltar à mesa</button>`);
+}
+
+function showResult() {
+  if (!G.result) return;
+  const r = G.result, T = TEAMS[G.mode];
+  const title = r.kind === 'bateu' ? `${nameOf(r.p)} bateu!` : 'Jogo trancado';
+  const sub = r.win < 0 ? 'Empate na contagem: ninguém marca.' : `${T[r.win]} ${G.n === 4 ? 'marcam' : (r.win === 0 ? 'marca' : 'marca')} ${r.pts} pontos${r.kind === 'trancou' ? ` (menos pontos na mão: ${r.tp[r.win]} contra ${r.tp[1 - r.win]})` : ''}.`;
+  const rows = [...Array(G.n).keys()].map(p => `<div class="res-row"><div><strong><span class="dot ${'t' + team(p)}"></span> ${nameOf(p)}</strong><div class="tiles">${G.hands[p].map(t => tileSVG(t[0], t[1], { s: 10, v: true })).join('') || '<span class="s-count">sem peças</span>'}</div></div><span class="s-count">${handPips(G.hands[p])} pts</span></div>`).join('');
+  const st = G.stats.asked ? `<p>Seu treino até agora: <strong>${G.stats.best} de ${G.stats.asked}</strong> jogadas iguais às do professor, nota média <strong>${fmt(G.stats.sumGrade / G.stats.asked)}</strong>.</p>` : '';
+  const champ = G.matchOver ? `<p><strong>${T[G.score[0] >= TARGET && G.score[0] >= G.score[1] ? 0 : 1]} ${G.n === 4 ? 'vencem' : 'vence'} a partida!</strong></p>` : '';
+  sheet(`<h3>${title}</h3><p>${sub}</p>
+    <div class="big-score"><div>${G.score[0]}<small>${T[0]}</small></div><span style="color:var(--ink-faint)">·</span><div>${G.score[1]}<small>${T[1]}</small></div></div>
+    ${champ}<div>${rows}</div>${st}
+    <button class="primary" id="resNext">${G.matchOver ? 'Nova partida' : 'Próxima rodada'}</button>
+    <button class="linkbtn" data-close>Ver a mesa</button>`);
+  $('#resNext').addEventListener('click', () => { closeSheet(); onNext(); });
+}
+
+/* ================== Controles ================== */
+function onNext() {
+  if (!G) return;
+  if (G.matchOver) { const { mode, train } = G; newMatch(mode, train); render(); return; }
+  if (G.over) { newHand(); render(); return; }
+  if (G.await) return;
+  step(); render();
+  if (G.over) { stopAuto(); setTimeout(showResult, 900); }
+  if (G.await) stopAuto();
+}
+function stopAuto() { clearInterval(autoTimer); autoTimer = null; $('#btnAuto').setAttribute('aria-pressed', 'false'); }
+function toggleAuto() {
+  if (autoTimer) return stopAuto();
+  if (!G || G.over || G.await) return;
+  $('#btnAuto').setAttribute('aria-pressed', 'true');
+  onNext();
+  autoTimer = setInterval(() => { if (!G || G.over || G.await || $('#sheetRoot').innerHTML) return stopAuto(); onNext(); }, 1700);
+}
+
+function openGame(mode) {
+  newMatch(mode, homeTrain);
+  $('#home').hidden = true; $('#game').hidden = false;
+  render();
+}
+
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
+  homeTrain = b.dataset.train === '1';
+  document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-checked', x === b));
+}));
+$('#card1x1').addEventListener('click', () => openGame('1x1'));
+$('#card2x2').addEventListener('click', () => openGame('2x2'));
+$('#btnRules').addEventListener('click', showRules);
+$('#btnBack').addEventListener('click', () => { stopAuto(); closeSheet(); $('#game').hidden = true; $('#home').hidden = false; });
+$('#btnNext').addEventListener('click', onNext);
+$('#btnAuto').addEventListener('click', toggleAuto);
+$('#btnCount').addEventListener('click', showCount);
+$('#btnReveal').addEventListener('click', () => { G.reveal = !G.reveal; render(); });
+document.addEventListener('keydown', e => {
+  if ($('#game').hidden || $('#sheetRoot').innerHTML) return;
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); onNext(); }
+});
+window.addEventListener('resize', () => { if (G && !$('#game').hidden) renderBoard(); });
+
+$('#heroChain').innerHTML = [[6,6,1],[6,3],[3,3,1],[3,5],[5,1],[1,1,1],[1,4]].map(([a,b,v]) => tileSVG(a, b, { s: 26, v: !!v })).join('');
+
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
