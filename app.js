@@ -31,9 +31,9 @@ const sheetOpen = () => $('#sheetRoot').childElementCount > 0;
 const V = { ok: false, tiles: new Map(), players: {}, hl: new Map(), frame: 0, hid: '', flash: null, lastKey: null, W: 1, H: 1,
             cam: null, camCur: null, camGoal: null, smoke: [], ember: null, pad: null, padSig: '' };
 const SEATPOS = { '1x1': ['S', 'N'], '2x2': ['S', 'E', 'N', 'W'] };
-const PL = { N: { x: 0, z: -9.5 }, E: { x: 8.3, z: -4.6 }, W: { x: -8.3, z: -4.6 } };
-const ANCH = { S: [0, 2.15, 6.25], N: [0, 4.6, -9.5], E: [8.3, 4.6, -4.6], W: [-8.3, 4.6, -4.6] };
-const RACK = { N: { c: [0, -6.3], along: [1, 0], n: [0, -1] }, E: { c: [5.95, -1.7], along: [0, 1], n: [1, 0] }, W: { c: [-5.95, -1.7], along: [0, 1], n: [-1, 0] } };
+const PL = { N: { x: 0, z: -9.5 }, E: { x: 9.1, z: -.3 }, W: { x: -9.1, z: -.3 } };
+const ANCH = { S: [0, 2.15, 6.25], N: [0, 4.6, -9.5], E: [9.1, 4.6, -.3], W: [-9.1, 4.6, -.3] };
+const RACK = { N: { c: [0, -6.3], along: [1, 0], n: [0, -1] }, E: { c: [5.95, -.3], along: [0, 1], n: [1, 0] }, W: { c: [-5.95, -.3], along: [0, 1], n: [-1, 0] } };
 const TARGET_PT = new THREE.Vector3(0, 0, 0.3);
 const ELEV = 47 * Math.PI / 180;
 const tmpE = new THREE.Euler(0, 0, 0, 'YXZ');
@@ -181,7 +181,7 @@ function buildProps() {
     add(new THREE.Mesh(new THREE.CylinderGeometry(.36 + .1 * fill, .35, bh, 28), beerMat), x, .1 + bh / 2, z);
     add(new THREE.Mesh(new THREE.CylinderGeometry(.37 + .1 * fill + .01, .36 + .1 * fill, .16, 28), foamMat), x, .1 + bh + .08, z);
   };
-  beer(6.35, 4.3, .72);
+  beer(6.45, 6.65, .72);
 
   // Garrafa e copo americano no canto de trás
   const bottleMat = new THREE.MeshStandardMaterial({ color: 0x3a1c08, roughness: .12, metalness: .1, transparent: true, opacity: .9 });
@@ -222,12 +222,12 @@ function buildProps() {
 
   // Bloco de placar e lápis
   const padTex = canvasTex(256, 320, () => {});
-  V.pad = add(new THREE.Mesh(new THREE.BoxGeometry(1.5, .05, 1.9), [std(0xe8e2d4), std(0xe8e2d4), new THREE.MeshStandardMaterial({ map: padTex, roughness: .9 }), std(0xe8e2d4), std(0xe8e2d4), std(0xe8e2d4)]), -6.05, .03, 3.75, false);
-  V.pad.rotation.y = .12; V.pad.receiveShadow = true;
+  V.pad = add(new THREE.Mesh(new THREE.BoxGeometry(1.15, .05, 1.5), [std(0xe8e2d4), std(0xe8e2d4), new THREE.MeshStandardMaterial({ map: padTex, roughness: .9 }), std(0xe8e2d4), std(0xe8e2d4), std(0xe8e2d4)]), -6.3, .03, 6.45, false);
+  V.pad.rotation.y = .1; V.pad.receiveShadow = true;
   const pencil = new THREE.Group();
   const pb = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, 1.5, 6), std(0xe8b524, { roughness: .5 }));
   const tip = new THREE.Mesh(new THREE.ConeGeometry(.05, .18, 6), std(0xe9c9a0)); tip.position.y = .84;
-  pencil.add(pb, tip); pencil.rotation.z = Math.PI / 2; pencil.rotation.y = -.5; pencil.position.set(-5.85, .06, 5.0); pencil.traverse(o => o.castShadow = true); s.add(pencil);
+  pencil.add(pb, tip); pencil.rotation.z = Math.PI / 2; pencil.rotation.y = .7; pencil.position.set(-6.25, .1, 6.5); pencil.traverse(o => o.castShadow = true); s.add(pencil);
 }
 
 function updatePad() {
@@ -358,7 +358,7 @@ function computeTargets() {
   for (let p = 0; p < G.n; p++) {
     const pos = seats[p], h = G.hands[p], n = h.length;
     if (pos === 'S') {
-      const sp = Math.min(1.12, 11.4 / Math.max(n, 1));
+      const sp = Math.min(1.12, 10.4 / Math.max(n, 1));
       h.forEach((t, i) => {
         const x = (i - (n - 1) / 2) * sp, z = 6.25; let y = .86;
         if (G.await) {
