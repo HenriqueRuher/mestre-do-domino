@@ -31,11 +31,11 @@ const sheetOpen = () => $('#sheetRoot').childElementCount > 0;
 const V = { ok: false, tiles: new Map(), players: {}, hl: new Map(), frame: 0, hid: '', flash: null, lastKey: null, W: 1, H: 1,
             cam: null, camCur: null, camGoal: null, smoke: [], ember: null, pad: null, padSig: '' };
 const SEATPOS = { '1x1': ['S', 'N'], '2x2': ['S', 'E', 'N', 'W'] };
-const PL = { N: { x: 0, z: -9.2 }, E: { x: 9.3, z: -.3 }, W: { x: -9.3, z: -.3 } };
-const ANCH = { S: [0, 2.15, 6.25], N: [0, 6.6, -9.2], E: [9.3, 6.6, -.3], W: [-9.3, 6.6, -.3] };
+const PL = { N: { x: 0, z: -11.4 }, E: { x: 11.2, z: -.3 }, W: { x: -11.2, z: -.3 } };
+const ANCH = { S: [0, 2.15, 6.25], N: [0, 11.2, -11.4], E: [11.2, 11.2, -.3], W: [-11.2, 11.2, -.3] };
 const RACK = { N: { c: [0, -6.3], along: [1, 0], n: [0, -1] }, E: { c: [5.95, -.3], along: [0, 1], n: [1, 0] }, W: { c: [-5.95, -.3], along: [0, 1], n: [-1, 0] } };
 const TARGET_PT = new THREE.Vector3(0, 0, 0.3);
-const ELEV = 38 * Math.PI / 180;
+const ELEV = 40 * Math.PI / 180;
 const tmpE = new THREE.Euler(0, 0, 0, 'YXZ');
 const qFlat = (u, down = false) => new THREE.Quaternion().setFromEuler(tmpE.set(down ? Math.PI / 2 : -Math.PI / 2, Math.atan2(-u[0], -u[1]), 0, 'YXZ'));
 const qStand = (n, tilt) => new THREE.Quaternion().setFromEuler(tmpE.set(-tilt, Math.atan2(n[0], n[1]), 0, 'YXZ'));
@@ -67,9 +67,9 @@ function init3D() {
   V.fg.toneMappingExposure = .9; V.bg.toneMappingExposure = 1.2; V.mid.toneMappingExposure = 1.15;
   V.fg.setClearColor(0x000000, 0);
   V.fg.shadowMap.enabled = true; V.fg.shadowMap.type = THREE.PCFSoftShadowMap;
-  V.cam = new THREE.PerspectiveCamera(34, 1, .5, 200);
+  V.cam = new THREE.PerspectiveCamera(46, 1, .5, 600);
   V.fgScene = new THREE.Scene(); V.bgScene = new THREE.Scene(); V.midScene = new THREE.Scene();
-  buildRoom(); buildTable(); buildProps(); buildTiles(); buildMidLights(); buildPlayers(); buildLife();
+  buildRoom(); buildTable(); buildProps(); buildTiles(); buildMidLights(); buildPlayers(); buildLife(); scaleRoomLights();
   V.ray = new THREE.Raycaster();
   new ResizeObserver(resize3D).observe(stage);
   $('#fg3d').addEventListener('pointerdown', onPick);
@@ -79,9 +79,14 @@ function init3D() {
 }
 
 /* ---------- O bar ao fundo (camada desfocada) ---------- */
+// O bar é modelado em "escala de pessoa" e ampliado (ROOM_K) para casar com a mesa e as pedras.
+const ROOM_K = 3.4;
 function buildRoom() {
-  const s = V.bgScene, BZ = -22;
-  s.background = new THREE.Color(0x060403); s.fog = new THREE.Fog(0x070403, 75, 180);
+  V.room = new THREE.Group(); V.room.scale.setScalar(ROOM_K); V.bgScene.add(V.room);
+  const s = V.room, BZ = -22;
+  V.bgScene.background = new THREE.Color(0x060403); V.bgScene.fog = new THREE.Fog(0x070403, 130, 430);
+  const shadow = new THREE.Mesh(new THREE.CircleGeometry(2.9, 40), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .55, depthWrite: false }));
+  shadow.rotation.x = -Math.PI / 2; shadow.position.y = -3.39; shadow.scale.set(1.15, 1.25, 1); s.add(shadow);
   s.add(new THREE.HemisphereLight(0x6a4a30, 0x050302, .5));
   const key = new THREE.DirectionalLight(0xffcf9a, 1.0); key.position.set(0, 10, 8); s.add(key);
   const warm = new THREE.SpotLight(0xffc68a, 900, 0, .7, .7, 2); warm.position.set(0, 15, 0); warm.target.position.set(0, 0, -5); s.add(warm, warm.target);
@@ -231,8 +236,8 @@ function makeStanding(o) {
 }
 
 function buildLife() {
-  const s = V.bgScene, BZ = -22, A = V.bgAnim = [];
-  s.environment = warmEnv(V.bg);
+  const s = V.room, BZ = -22, A = V.bgAnim = [];
+  V.bgScene.environment = warmEnv(V.bg);
   const fgEnv = warmEnv(V.fg);
   for (const m of V.tiles.values()) for (const mat of [m.userData.body.material, m.userData.fm]) { mat.envMap = fgEnv; mat.envMapIntensity = .45; }
   const brass = std(0xb8893a, { roughness: .25, metalness: .85 }), sph = new THREE.SphereGeometry(1, 12, 10);
@@ -361,6 +366,10 @@ function buildLife() {
   V.fgAnim = [t => { const a = dustGeo.attributes.position; for (let i = 0; i < n; i++) { let y = a.array[i * 3 + 1] + .004 + Math.sin(t + i) * .002; if (y > 10) y = 1; a.array[i * 3 + 1] = y; a.array[i * 3] += Math.sin(t * .3 + i) * .002; } a.needsUpdate = true; }];
 }
 
+function scaleRoomLights() {
+  V.room.traverse(o => { if (o.isPointLight || o.isSpotLight) { if (o.distance) o.distance *= ROOM_K; o.intensity *= ROOM_K * ROOM_K; } });
+}
+
 /* ---------- Mesa com spot central (camada nítida) ---------- */
 function buildTable() {
   const s = V.fgScene;
@@ -389,6 +398,8 @@ function buildTable() {
   for (const z of [-7.7, 7.7]) { const m = new THREE.Mesh(railF, woodMat); m.position.set(0, .05, z); m.castShadow = m.receiveShadow = true; s.add(m); }
   for (const x of [-7.3, 7.3]) { const m = new THREE.Mesh(railS, woodMat); m.position.set(x, .05, 0); m.castShadow = m.receiveShadow = true; s.add(m); }
   const apron = new THREE.Mesh(new THREE.BoxGeometry(15.2, 1.6, 16), std(0x24150c, { roughness: .6 })); apron.position.y = -1.0; s.add(apron);
+  const legGeo = lathe([[0, 0], [.55, 0], [.6, .5], [.42, 1.8], [.6, 4.6], [.36, 7.6], [.48, 9.3], [.65, 9.7], [.65, 10], [0, 10]], 16), legMat = std(0x24150c, { roughness: .5 });
+  for (const [x, z] of [[-6.5, -7.1], [6.5, -7.1], [-6.5, 7.1], [6.5, 7.1]]) { const l = new THREE.Mesh(legGeo, legMat); l.position.set(x, -11.6, z); s.add(l); }
 }
 
 /* ---------- Objetos do bar sobre a mesa ---------- */
@@ -641,9 +652,9 @@ function buildMidLights() {
   const s = V.midScene;
   s.add(new THREE.HemisphereLight(0x8a6440, 0x070403, .35));
   const spill = new THREE.SpotLight(0xffd39a, 1500, 0, .95, .8, 2); spill.position.set(0, 15, .6); spill.target.position.set(0, 0, -4); s.add(spill, spill.target);
-  const rim = new THREE.DirectionalLight(0xffa060, 1.8); rim.position.set(0, 7, -26); s.add(rim);
-  const pink = new THREE.PointLight(0xff4f86, 90, 34, 2); pink.position.set(-11, 8, -15); s.add(pink);
-  const amber = new THREE.PointLight(0xffa53a, 70, 34, 2); amber.position.set(11, 8, -15); s.add(amber);
+  const rim = new THREE.DirectionalLight(0xffa060, 1.8); rim.position.set(0, 24, -80); s.add(rim);
+  const pink = new THREE.PointLight(0xff4f86, 900, 110, 2); pink.position.set(-34, 26, -50); s.add(pink);
+  const amber = new THREE.PointLight(0xffa53a, 700, 110, 2); amber.position.set(34, 26, -50); s.add(amber);
 }
 
 /* ---------- A turma da mesa em estilo cartum (sombra chapada + contorno de tinta) ---------- */
@@ -788,10 +799,10 @@ function buildPlayers() {
   V.chairs = {}; V.midSmoke = [];
   for (const pos of ['N', 'E', 'W']) {
     const yaw = Math.atan2(-PL[pos].x, -PL[pos].z);
-    const chair = outline(makeChair(), .035); chair.position.set(PL[pos].x, .9, PL[pos].z); chair.scale.setScalar(1.4); chair.rotation.y = yaw;
+    const chair = outline(makeChair(), .035); chair.position.set(PL[pos].x, .12, PL[pos].z); chair.scale.setScalar(ROOM_K); chair.rotation.y = yaw;
     V.midScene.add(chair); V.chairs[pos] = chair;
     const p = assemble(makers[pos]());
-    p.position.set(PL[pos].x, .1, PL[pos].z); p.scale.setScalar(1.6);
+    p.position.set(PL[pos].x, -.5, PL[pos].z); p.scale.setScalar(3.0);
     p.rotation.order = 'YXZ'; p.rotation.y = yaw;
     V.midScene.add(p); V.players[pos] = p;
     if (p.userData.ember) for (let i = 0; i < 6; i++) {
@@ -930,7 +941,7 @@ function applyCam(d, top, bottom) {
 function fitCamera() {
   if (!V.ok) return;
   const { top, bottom } = insets(), H = V.H;
-  const pts = [[-7.7, .3, 8.1], [7.7, .3, 8.1], [-7.7, .3, -8.1], [7.7, .3, -8.1], [-5.2, 2.1, 6.25], [5.2, 2.1, 6.25], [0, 6.3, -9.2]].map(p => new THREE.Vector3(...p));
+  const pts = [[-7.7, .3, 8.1], [7.7, .3, 8.1], [-7.7, .3, -8.1], [7.7, .3, -8.1], [-5.2, 2.1, 6.25], [5.2, 2.1, 6.25], [0, 8.5, -11.4]].map(p => new THREE.Vector3(...p));
   const yMin = -1 + 2 * bottom / H + .01, yMax = 1 - 2 * top / H - .01;
   let topEff = top, hi = 140;
   for (let pass = 0; pass < 4; pass++) {
@@ -1368,7 +1379,7 @@ function showResult() {
 }
 
 /* ================== Instalar e atualizar ================== */
-const APP_VERSION = '2.3.0'; // manter igual a VERSION em sw.js
+const APP_VERSION = '2.4.0'; // manter igual a VERSION em sw.js
 const isStandalone = () => matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone === true;
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 let installEvt = null;

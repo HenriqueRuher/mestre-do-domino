@@ -1,6 +1,6 @@
 // Service worker da Pedra Mestra: funciona offline e se atualiza sozinho.
 // Ao publicar uma versão nova, mude VERSION: o navegador detecta, instala e o app recarrega.
-const VERSION = '2.3.0';
+const VERSION = '2.4.0';
 const CACHE = 'pedra-mestra-' + VERSION;
 const FILES = ['./', 'index.html', 'engine.js', 'app.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'vendor/three.module.min.js', 'vendor/addons/geometries/RoundedBoxGeometry.js'];
 
